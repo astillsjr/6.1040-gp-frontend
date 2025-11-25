@@ -4,7 +4,7 @@
         <h1>Join LocalLoop</h1>
         <div v-if="backendStatus && !backendStatus.success" class="backend-warning">
           ⚠️ Cannot connect to backend API. Please check your configuration.
-          <br><small>API URL: {{ import.meta.env.VITE_API_BASE_URL || '/api' }}</small>
+          <br><small>API URL: {{ apiBaseUrl }}</small>
         </div>
         <form @submit.prevent="handleRegister" class="auth-form">
         <div class="form-group">
@@ -80,13 +80,15 @@ const error = ref('')
 const loading = ref(false)
 const backendStatus = ref(null)
 
+// Get API base URL for display
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+
 const passwordsMatch = computed(() => {
   return password.value && password.value === confirmPassword.value
 })
 
 onMounted(async () => {
   // Check backend connection status
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
   const status = await checkBackendConnection(apiBaseUrl)
   backendStatus.value = status
   
