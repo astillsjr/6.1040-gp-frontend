@@ -1,8 +1,16 @@
 import axios from 'axios'
 
+// Get API base URL from environment or default to /api for local dev
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
-// const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+// Log API configuration for debugging (only in dev)
+if (import.meta.env.DEV) {
+  console.log('🔧 API Configuration:', {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    resolved: API_BASE_URL,
+    mode: import.meta.env.MODE
+  })
+}
 
 // Create axios instance
 const api = axios.create({
@@ -10,6 +18,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 })
 
 // Add access token to requests if available
@@ -38,7 +47,12 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken')
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/api/UserAuthentication/refreshAccessToken`, {
+          // Fix: Don't double up on /api - API_BASE_URL already includes it or is the full base
+          const refreshUrl = API_BASE_URL.endsWith('/api') 
+            ? `${API_BASE_URL}/UserAuthentication/refreshAccessToken`
+            : `${API_BASE_URL}/api/UserAuthentication/refreshAccessToken`
+          
+          const response = await axios.post(refreshUrl, {
             refreshToken,
           })
 

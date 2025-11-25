@@ -5,7 +5,20 @@
       <p class="subtitle">MIT's Community Resource Sharing Platform</p>
       <div class="cta-buttons">
         <router-link to="/items" class="btn btn-primary">Browse Items</router-link>
-        <router-link to="/items/new" class="btn btn-secondary">List an Item</router-link>
+        <router-link 
+          v-if="isAuthenticated" 
+          to="/items/new" 
+          class="btn btn-secondary"
+        >
+          List an Item
+        </router-link>
+        <router-link 
+          v-else 
+          to="/register" 
+          class="btn btn-secondary"
+        >
+          Get Started
+        </router-link>
       </div>
     </div>
     
@@ -40,31 +53,54 @@
 </template>
 
 <script setup>
-// Home view doesn't need any logic for now
+import { computed } from 'vue'
+import { authService } from '../services/auth'
+
+const isAuthenticated = computed(() => authService.isAuthenticated())
 </script>
 
 <style scoped>
 .home-view {
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 70px);
 }
 
 .hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #A31F34 0%, #8A1538 100%);
   color: white;
-  padding: 80px 20px;
+  padding: 100px 20px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(46, 125, 50, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(46, 125, 50, 0.1) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 .hero-section h1 {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: 20px;
   font-weight: 700;
+  letter-spacing: -1px;
+  position: relative;
+  z-index: 1;
 }
 
 .subtitle {
-  font-size: 20px;
-  margin-bottom: 40px;
-  opacity: 0.9;
+  font-size: 22px;
+  margin-bottom: 48px;
+  opacity: 0.95;
+  font-weight: 400;
+  position: relative;
+  z-index: 1;
 }
 
 .cta-buttons {
@@ -72,36 +108,72 @@
   gap: 20px;
   justify-content: center;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
 }
 
 .btn {
-  padding: 14px 32px;
+  padding: 16px 36px;
   border-radius: 8px;
   text-decoration: none;
   font-weight: 600;
   font-size: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 .btn-primary {
-  background-color: white;
-  color: #667eea;
+  background-color: #2E7D32;
+  color: white;
+  border: 2px solid #2E7D32;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-primary:hover {
+  background-color: #1B5E20;
+  border-color: #1B5E20;
 }
 
 .btn-secondary {
   background-color: transparent;
   color: white;
   border: 2px solid white;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .features-section {
-  padding: 80px 20px;
-  background-color: #f9f9f9;
+  padding: 100px 20px;
+  background: linear-gradient(to bottom, #F5F7FA 0%, #FFFFFF 100%);
 }
 
 .container {
@@ -111,44 +183,69 @@
 
 .features-section h2 {
   text-align: center;
-  font-size: 36px;
-  margin-bottom: 50px;
-  color: #2c3e50;
+  font-size: 42px;
+  margin-bottom: 60px;
+  color: #1A1A1A;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
 }
 
 .feature-card {
   background: white;
-  padding: 30px;
-  border-radius: 12px;
+  padding: 40px 32px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #E2E8F0;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2E7D32 0%, #4CAF50 100%);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.feature-card:hover::before {
+  transform: scaleX(1);
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(46, 125, 50, 0.15);
+  border-color: #2E7D32;
 }
 
 .feature-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .feature-card h3 {
   font-size: 24px;
-  margin-bottom: 12px;
-  color: #2c3e50;
+  margin-bottom: 16px;
+  color: #1A1A1A;
+  font-weight: 600;
 }
 
 .feature-card p {
-  color: #666;
-  line-height: 1.6;
+  color: #4A5568;
+  line-height: 1.7;
+  font-size: 15px;
 }
 </style>

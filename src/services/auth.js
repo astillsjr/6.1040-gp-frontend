@@ -45,17 +45,35 @@ export const authService = {
       return { success: true, user: response.data.user }
     } catch (error) {
       // Better error handling to see what's actually wrong
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message ||
-                          error.message || 
-                          'Registration failed. Please check your connection and try again.'
+      let errorMessage = 'Registration failed. Please try again.'
+      
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. Please check your connection and try again.'
+      } else if (error.code === 'ERR_NETWORK' || !error.response) {
+        errorMessage = 'Cannot connect to server. Please check:\n1. Backend is running\n2. VITE_API_BASE_URL is set correctly\n3. No CORS issues'
+      } else if (error.response?.status === 404) {
+        errorMessage = 'API endpoint not found. Please check your backend configuration.'
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later.'
+      } else {
+        errorMessage = error.response?.data?.error || 
+                      error.response?.data?.message ||
+                      error.message || 
+                      errorMessage
+      }
       
       // Log full error for debugging
       console.error('Registration error:', {
+        code: error.code,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method
+        }
       })
       
       return { success: false, error: errorMessage }

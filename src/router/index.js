@@ -8,7 +8,7 @@ const router = createRouter({
       path: '/',
       name: 'Home',
       component: () => import('../views/HomeView.vue'),
-      meta: { requiresAuth: true },
+      // No auth required - everyone can see the home page
     },
     {
       path: '/login',
@@ -32,13 +32,13 @@ const router = createRouter({
       path: '/items',
       name: 'Items',
       component: () => import('../views/ItemsView.vue'),
-      meta: { requiresAuth: true },
+      // No auth required - everyone can browse items
     },
     {
       path: '/items/new',
       name: 'NewItem',
       component: () => import('../views/NewItemView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true }, // Only authenticated users can post items
     },
   ],
 })
@@ -47,9 +47,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = authService.isAuthenticated()
 
+  // Only protect routes that explicitly require auth
   if (to.meta.requiresAuth && !isAuthenticated) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
   } else if (to.meta.requiresGuest && isAuthenticated) {
+    // If logged in and trying to access login/register, redirect to home
     next({ name: 'Home' })
   } else {
     next()
