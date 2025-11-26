@@ -2,7 +2,7 @@
   <div class="auth-container">
       <div class="auth-card">
         <h1>Join LocalLoop</h1>
-        <div v-if="backendStatus && !backendStatus.success" class="backend-warning">
+        <div v-if="isDev && backendStatus && !backendStatus.success" class="backend-warning">
           ⚠️ Cannot connect to backend API. Please check your configuration.
           <br><small>API URL: {{ apiBaseUrl }}</small>
         </div>
@@ -82,6 +82,7 @@ const backendStatus = ref(null)
 
 // Get API base URL for display
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+const isDev = import.meta.env.DEV
 
 const passwordsMatch = computed(() => {
   return password.value && password.value === confirmPassword.value
