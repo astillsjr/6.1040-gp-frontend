@@ -9,6 +9,7 @@ export { default as CardFooter } from './CardFooter.vue'
 export { default as Badge } from './Badge.vue'
 export { default as Input } from './Input.vue'
 export { default as Label } from './Label.vue'
+export { default as Textarea } from './Textarea.vue'
 export { default as Select } from './Select.vue'
 export { default as SelectItem } from './SelectItem.vue'
 

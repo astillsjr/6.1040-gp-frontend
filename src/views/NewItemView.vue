@@ -1,276 +1,271 @@
 <template>
-  <div class="new-item-view">
-    <div class="container">
-      <h1>List a New Item</h1>
-      
-      <form @submit.prevent="handleSubmit" class="item-form">
-        <div class="form-group">
-          <label for="title">Item Title *</label>
-          <input
-            id="title"
-            v-model="formData.title"
-            type="text"
-            required
-            placeholder="e.g., Drill, HDMI Cable, Suit"
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="description">Description *</label>
-          <textarea
-            id="description"
-            v-model="formData.description"
-            rows="4"
-            required
-            placeholder="Describe your item..."
-          ></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label for="category">Category *</label>
-          <select id="category" v-model="formData.category" required>
-            <option value="">Select a category</option>
-            <option value="Tools">Tools</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Clothing">Clothing</option>
-            <option value="Sports">Sports</option>
-            <option value="Books">Books</option>
-            <option value="Furniture">Furniture</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="condition">Condition *</label>
-          <select id="condition" v-model="formData.condition" required>
-            <option value="">Select condition</option>
-            <option value="New">New</option>
-            <option value="Like New">Like New</option>
-            <option value="Good">Good</option>
-            <option value="Fair">Fair</option>
-            <option value="Poor">Poor</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="dormVisibility">Dorm Visibility *</label>
-          <select id="dormVisibility" v-model="formData.dormVisibility" required>
-            <option value="">Select visibility</option>
-            <option value="ALL">All MIT Students</option>
-            <option v-for="dorm in validDorms" :key="dorm" :value="dorm">
-              {{ dorm }} only
-            </option>
-          </select>
-          <small class="form-hint">Choose who can see this item</small>
-        </div>
-        
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-        
-        <div class="form-actions">
-          <button type="button" @click="$router.back()" class="btn btn-secondary">
-            Cancel
-          </button>
-          <button type="submit" :disabled="loading" class="btn btn-primary">
-            {{ loading ? 'Creating...' : 'List Item' }}
-          </button>
-        </div>
-      </form>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div class="max-w-4xl mx-auto px-4 py-4">
+        <h1 class="text-gray-900 text-2xl font-semibold">List a New Item</h1>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto px-4 py-6">
+      <Card class="p-6">
+        <CardHeader>
+          <CardTitle>Item Information</CardTitle>
+          <CardDescription>Fill in the details about the item you want to share</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form @submit.prevent="handleSubmit" class="space-y-6">
+            <!-- Title -->
+            <div class="space-y-2">
+              <Label for="title">Item Title *</Label>
+              <Input
+                id="title"
+                v-model="formData.title"
+                type="text"
+                required
+                placeholder="e.g., Drill, HDMI Cable, Suit"
+                :disabled="itemStore.isLoading"
+              />
+            </div>
+
+            <!-- Description -->
+            <div class="space-y-2">
+              <Label for="description">Description *</Label>
+              <Textarea
+                id="description"
+                v-model="formData.description"
+                rows="4"
+                required
+                placeholder="Describe your item..."
+                :disabled="itemStore.isLoading"
+              />
+            </div>
+
+            <!-- Category -->
+            <div class="space-y-2">
+              <Label for="category">Category *</Label>
+              <Select
+                id="category"
+                :model-value="formData.category"
+                @update:model-value="formData.category = $event"
+                required
+                :disabled="itemStore.isLoading"
+              >
+                <SelectItem value="" label="Select a category" />
+                <SelectItem
+                  v-for="cat in categories"
+                  :key="cat"
+                  :value="cat"
+                  :label="cat"
+                />
+              </Select>
+            </div>
+
+            <!-- Condition -->
+            <div class="space-y-2">
+              <Label for="condition">Condition *</Label>
+              <Select
+                id="condition"
+                :model-value="formData.condition"
+                @update:model-value="formData.condition = $event"
+                required
+                :disabled="itemStore.isLoading"
+              >
+                <SelectItem value="" label="Select condition" />
+                <SelectItem value="Like New" label="Like New" />
+                <SelectItem value="Good" label="Good" />
+                <SelectItem value="Fair" label="Fair" />
+              </Select>
+            </div>
+
+            <!-- Listing Type -->
+            <div class="space-y-2">
+              <Label for="listingType">Listing Type *</Label>
+              <Select
+                id="listingType"
+                :model-value="formData.listingType"
+                @update:model-value="formData.listingType = ($event as 'BORROW' | 'TRANSFER' | '')"
+                required
+                :disabled="itemStore.isLoading"
+              >
+                <SelectItem value="" label="Select listing type" />
+                <SelectItem value="BORROW" label="Borrow (temporary)" />
+                <SelectItem value="TRANSFER" label="Transfer (permanent)" />
+              </Select>
+              <p class="text-sm text-muted-foreground">
+                Borrow: Item will be returned after use. Transfer: Item will be given permanently.
+              </p>
+            </div>
+
+            <!-- Dorm Visibility -->
+            <div class="space-y-2">
+              <Label for="dormVisibility">Dorm Visibility *</Label>
+              <Select
+                id="dormVisibility"
+                :model-value="formData.dormVisibility"
+                @update:model-value="formData.dormVisibility = $event"
+                required
+                :disabled="itemStore.isLoading"
+              >
+                <SelectItem value="" label="Select visibility" />
+                <SelectItem value="ALL" label="All MIT Students" />
+                <SelectItem
+                  v-for="dorm in validDorms"
+                  :key="dorm"
+                  :value="dorm"
+                  :label="dorm + ' only'"
+                />
+              </Select>
+              <p class="text-sm text-muted-foreground">
+                Choose who can see this item in the catalog
+              </p>
+            </div>
+
+            <!-- Photo URL (optional, for now) -->
+            <div class="space-y-2">
+              <Label for="photoUrl">Photo URL (Optional)</Label>
+              <Input
+                id="photoUrl"
+                v-model="formData.photoUrl"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                :disabled="itemStore.isLoading"
+              />
+              <p class="text-sm text-muted-foreground">
+                You can add more photos after creating the item
+              </p>
+            </div>
+
+            <!-- Error Message -->
+            <div v-if="itemStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
+              {{ itemStore.error }}
+            </div>
+
+            <!-- Success Message -->
+            <div v-if="successMessage" class="bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200">
+              {{ successMessage }}
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex gap-4 justify-end pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                @click="$router.back()"
+                :disabled="itemStore.isLoading"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                :disabled="itemStore.isLoading || !isFormValid"
+                size="lg"
+              >
+                {{ itemStore.isLoading ? 'Creating...' : 'List Item' }}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { itemListingAPI } from '../services/api'
-import { authService } from '../services/auth'
-import { VALID_DORMS } from '../utils/validDorms'
+import { useAuthStore } from '@/stores/authStore'
+import { useItemStore } from '@/stores/itemStore'
+import * as itemListingAPI from '@/api/itemListing'
+import { Button, Input, Label, Textarea, Card, CardHeader, CardTitle, CardDescription, CardContent, Select, SelectItem } from '@/components/ui'
+import { VALID_DORMS } from '@/utils/validDorms'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const itemStore = useItemStore()
 
-const loading = ref(false)
-const error = ref('')
 const validDorms = VALID_DORMS
+const categories = ['Tools', 'Electronics', 'Professional Attire', 'Craft Materials', 'Photography', 'Other']
+const successMessage = ref('')
+
 const formData = ref({
   title: '',
   description: '',
   category: '',
   condition: '',
+  listingType: '' as 'BORROW' | 'TRANSFER' | '',
   dormVisibility: '',
+  photoUrl: '',
 })
 
-const handleSubmit = async () => {
-  error.value = ''
-  loading.value = true
+const isFormValid = computed(() => {
+  return (
+    formData.value.title.trim() !== '' &&
+    formData.value.description.trim() !== '' &&
+    formData.value.category !== '' &&
+    formData.value.condition !== '' &&
+    formData.value.listingType !== '' &&
+    formData.value.dormVisibility !== ''
+  )
+})
+
+async function handleSubmit() {
+  if (!authStore.userId) {
+    router.push({ name: 'Login', query: { redirect: '/items/new' } })
+    return
+  }
+
+  if (!isFormValid.value) {
+    return
+  }
+
+  successMessage.value = ''
 
   try {
-    const userId = authService.getCurrentUserId()
-    if (!userId) {
-      error.value = 'Not authenticated'
-      loading.value = false
-      return
-    }
-
-    // ItemListing.createItem requires: owner, title, description, category, condition, dormVisibility
-    const result = await itemListingAPI.createItem({
-      owner: userId,
-      title: formData.value.title,
-      description: formData.value.description,
+    // Step 1: Create the item
+    const itemId = await itemStore.createItem({
+      owner: authStore.userId!,
+      title: formData.value.title.trim(),
+      description: formData.value.description.trim(),
       category: formData.value.category,
       condition: formData.value.condition,
-      dormVisibility: formData.value.dormVisibility,
     })
-    
-    if (result.data.error) {
-      error.value = result.data.error
+
+    // Step 2: List the item
+    if (formData.value.listingType !== '' && (formData.value.listingType === 'BORROW' || formData.value.listingType === 'TRANSFER')) {
+      await itemListingAPI.listItem({
+        item: itemId,
+        type: formData.value.listingType,
+        dormVisibility: formData.value.dormVisibility,
+      })
     } else {
-      router.push('/items')
+      throw new Error('Invalid listing type')
     }
-  } catch (err) {
-    error.value = err.response?.data?.error || 'Failed to create item. Please try again.'
-    console.error(err)
-  } finally {
-    loading.value = false
+
+    // Step 3: Add photo if provided
+    if (formData.value.photoUrl.trim()) {
+      try {
+        await itemListingAPI.addPhoto({
+          item: itemId,
+          photoUrl: formData.value.photoUrl.trim(),
+          order: 0,
+        })
+      } catch (photoError) {
+        console.error('Failed to add photo:', photoError)
+        // Don't fail the whole operation if photo fails
+      }
+    }
+
+    successMessage.value = 'Item listed successfully!'
+    
+    // Redirect to items page after a short delay
+    setTimeout(() => {
+      router.push('/items')
+    }, 1500)
+  } catch (error) {
+    // Error is handled by itemStore.error
+    console.error('Failed to create item:', error)
   }
 }
 </script>
-
-<style scoped>
-.new-item-view {
-  padding: 48px 24px;
-  min-height: calc(100vh - 70px);
-  background: linear-gradient(to bottom, #F5F7FA 0%, #FFFFFF 100%);
-}
-
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-h1 {
-  font-size: 42px;
-  margin-bottom: 36px;
-  color: #1A1A1A;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.item-form {
-  background: white;
-  border-radius: 16px;
-  padding: 48px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #E2E8F0;
-}
-
-.form-group {
-  margin-bottom: 28px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: 600;
-  color: #4A5568;
-  font-size: 14px;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  font-family: inherit;
-  transition: all 0.2s;
-  background-color: #F7FAFC;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #2E7D32;
-  background-color: white;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 100px;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 6px;
-  color: #718096;
-  font-size: 13px;
-}
-
-.error-message {
-  background-color: #FEE2E2;
-  color: #A31F34;
-  padding: 14px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  text-align: center;
-  border: 1px solid #FECACA;
-  font-size: 14px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: flex-end;
-  margin-top: 36px;
-  padding-top: 24px;
-  border-top: 1px solid #E2E8F0;
-}
-
-.btn {
-  padding: 14px 28px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
-  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-secondary {
-  background-color: white;
-  color: #4A5568;
-  border: 2px solid #E2E8F0;
-}
-
-.btn-secondary:hover {
-  background-color: #F7FAFC;
-  border-color: #CBD5E0;
-}
-</style>

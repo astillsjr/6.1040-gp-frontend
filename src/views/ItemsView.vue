@@ -131,6 +131,7 @@ import Select from '@/components/ui/Select.vue'
 import SelectItem from '@/components/ui/SelectItem.vue'
 import ItemCard from '@/components/items/ItemCard.vue'
 import { Search, SlidersHorizontal } from 'lucide-vue-next'
+import { VALID_DORMS } from '@/utils/validDorms'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -142,7 +143,7 @@ const selectedDorm = ref('all')
 const showFilters = ref(false)
 
 const categories = ['All', 'Tools', 'Electronics', 'Professional Attire', 'Craft Materials', 'Photography']
-const dorms = ['All Dorms', 'Simmons Hall', 'Next House', 'MacGregor House', 'Burton-Conner', 'New House']
+const dorms = ['All Dorms', ...VALID_DORMS]
 const quickCategories = ['All', 'Tools', 'Electronics', 'Attire', 'Craft']
 
 // Fetch items on mount
