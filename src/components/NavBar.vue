@@ -1,131 +1,74 @@
 <template>
-  <nav class="navbar">
-    <div class="nav-container">
-      <router-link to="/" class="nav-brand">
-        <h1>LocalLoop</h1>
+  <nav class="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#A31F34] to-[#8A1538] shadow-lg z-[1000] h-[70px] border-b border-[#8A1538]/20">
+    <div class="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+      <router-link 
+        to="/" 
+        class="text-white hover:opacity-90 transition-opacity no-underline"
+      >
+        <h1 class="text-2xl font-bold tracking-tight">BorrowMIT</h1>
       </router-link>
-      <div class="nav-links">
-        <router-link to="/items" class="nav-link">Browse Items</router-link>
+      
+      <div class="flex items-center gap-2">
+        <router-link 
+          to="/items" 
+          class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
+          active-class="bg-white/20 text-white font-semibold"
+        >
+          Browse Items
+        </router-link>
         
         <!-- Show different links based on authentication status -->
-        <template v-if="isAuthenticated">
-          <router-link to="/items/new" class="nav-link">List Item</router-link>
-          <router-link to="/profile" class="nav-link">Profile</router-link>
-          <button @click="handleLogout" class="nav-link logout-btn">Logout</button>
+        <template v-if="authStore.isAuthenticated">
+          <router-link 
+            to="/items/new" 
+            class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
+            active-class="bg-white/20 text-white font-semibold"
+          >
+            List Item
+          </router-link>
+          <router-link 
+            to="/profile" 
+            class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
+            active-class="bg-white/20 text-white font-semibold"
+          >
+            {{ authStore.username }}
+          </router-link>
+          <button 
+            @click="handleLogout" 
+            class="text-white bg-white/20 hover:bg-white/30 border border-white/30 hover:border-white/50 font-medium transition-all text-sm px-4 py-2 rounded-md cursor-pointer"
+          >
+            Logout
+          </button>
         </template>
         <template v-else>
-          <router-link to="/login" class="nav-link">Login</router-link>
-          <router-link to="/register" class="nav-link register-btn">Sign Up</router-link>
+          <router-link 
+            to="/login" 
+            class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
+            active-class="bg-white/20 text-white font-semibold"
+          >
+            Login
+          </router-link>
+          <router-link 
+            to="/register" 
+            class="text-white bg-white/20 hover:bg-white/30 border border-white/30 hover:border-white/50 font-semibold transition-all text-sm px-4 py-2 rounded-md no-underline"
+          >
+            Sign Up
+          </router-link>
         </template>
       </div>
     </div>
   </nav>
 </template>
 
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { authService } from '../services/auth'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
-const isAuthenticated = computed(() => authService.isAuthenticated())
+const authStore = useAuthStore()
 
 const handleLogout = async () => {
-  await authService.logout()
+  await authStore.logout()
   router.push('/')
 }
 </script>
-
-<style scoped>
-.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(135deg, #A31F34 0%, #8A1538 100%);
-  box-shadow: 0 4px 12px rgba(163, 31, 52, 0.3);
-  z-index: 1000;
-  height: 70px;
-}
-
-.nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-  height: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.nav-brand {
-  text-decoration: none;
-  color: white;
-  transition: opacity 0.2s;
-}
-
-.nav-brand:hover {
-  opacity: 0.9;
-}
-
-.nav-brand h1 {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.nav-links {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.95);
-  font-weight: 500;
-  transition: all 0.2s;
-  background: none;
-  border: none;
-  font-size: 15px;
-  padding: 8px 16px;
-  border-radius: 6px;
-}
-
-.nav-link:hover {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-.nav-link.router-link-active {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.2);
-  font-weight: 600;
-}
-
-.logout-btn {
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 6px;
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.register-btn {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  font-weight: 600;
-}
-
-.register-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-</style>

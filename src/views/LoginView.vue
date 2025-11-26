@@ -1,71 +1,81 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
-      <h1>Login to LocalLoop</h1>
-      <form @submit.prevent="handleLogin" class="auth-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input
-            id="username"
-            v-model="username"
-            type="text"
-            required
-            placeholder="Enter your username"
-          />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            placeholder="Enter your password"
-          />
-        </div>
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-        <button type="submit" :disabled="loading" class="submit-btn">
-          {{ loading ? 'Logging in...' : 'Login' }}
-        </button>
-        <p class="auth-footer">
-          Don't have an account?
-          <router-link to="/register">Register here</router-link>
-        </p>
-      </form>
-    </div>
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#A31F34] to-[#8A1538] p-4 relative overflow-hidden">
+    <!-- Background decoration -->
+    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient from-green-500/10 to-transparent pointer-events-none" />
+    
+    <Card class="w-full max-w-md relative z-10 shadow-2xl">
+      <CardHeader class="text-center">
+        <CardTitle class="text-3xl font-bold">Login to BorrowMIT</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form @submit.prevent="handleLogin" class="space-y-6">
+          <div class="space-y-2">
+            <Label for="username">Username</Label>
+            <Input
+              id="username"
+              v-model="username"
+              type="text"
+              required
+              placeholder="Enter your username"
+              :disabled="authStore.isLoading"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="password">Password</Label>
+            <Input
+              id="password"
+              v-model="password"
+              type="password"
+              required
+              placeholder="Enter your password"
+              :disabled="authStore.isLoading"
+            />
+          </div>
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
+            {{ authStore.error }}
+          </div>
+          <Button
+            type="submit"
+            :disabled="authStore.isLoading"
+            class="w-full"
+            size="lg"
+          >
+            {{ authStore.isLoading ? 'Logging in...' : 'Login' }}
+          </Button>
+          <p class="text-center text-sm text-muted-foreground">
+            Don't have an account?
+            <router-link to="/register" class="text-primary font-semibold hover:underline">
+              Register here
+            </router-link>
+          </p>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { authService } from '../services/auth'
+import { useAuthStore } from '@/stores/authStore'
+import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
-const error = ref('')
-const loading = ref(false)
 
 const handleLogin = async () => {
-  error.value = ''
-  loading.value = true
-
-  const result = await authService.login(username.value, password.value)
+  const result = await authStore.login(username.value, password.value)
 
   if (result.success) {
-    // Redirect to the page they were trying to access, or home
-    const redirect = route.query.redirect || '/items'
+    // Redirect to the page they were trying to access, or items page
+    const redirect = (route.query.redirect as string) || '/items'
     router.push(redirect)
-  } else {
-    error.value = result.error || 'Login failed. Please try again.'
   }
-
-  loading.value = false
+  // Error is handled by authStore.authError
 }
 </script>
 

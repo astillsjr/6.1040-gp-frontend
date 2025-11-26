@@ -1,84 +1,106 @@
 <template>
-  <div class="auth-container">
-      <div class="auth-card">
-        <h1>Join LocalLoop</h1>
-        <div v-if="isDev && backendStatus && !backendStatus.success" class="backend-warning">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#A31F34] to-[#8A1538] p-4 relative overflow-hidden">
+    <!-- Background decoration -->
+    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient from-green-500/10 to-transparent pointer-events-none" />
+    
+    <Card class="w-full max-w-md relative z-10 shadow-2xl">
+      <CardHeader class="text-center">
+        <CardTitle class="text-3xl font-bold">Join BorrowMIT</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div v-if="isDev && backendStatus && !backendStatus.success" class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-md text-sm mb-4">
           ⚠️ Cannot connect to backend API. Please check your configuration.
-          <br><small>API URL: {{ apiBaseUrl }}</small>
+          <br><small class="opacity-80">API URL: {{ apiBaseUrl }}</small>
         </div>
-        <form @submit.prevent="handleRegister" class="auth-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input
-            id="username"
-            v-model="username"
-            type="text"
-            required
-            placeholder="Choose a username"
-          />
-        </div>
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            required
-            placeholder="your.email@mit.edu"
-          />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            placeholder="Choose a password"
-            minlength="8"
-          />
-        </div>
-        <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            required
-            placeholder="Confirm your password"
-          />
-        </div>
-        <div v-if="error" class="error-message">
-          <strong>Registration Error:</strong><br>
-          <span style="white-space: pre-line;">{{ error }}</span>
-        </div>
-        <button type="submit" :disabled="loading || !passwordsMatch" class="submit-btn">
-          {{ loading ? 'Creating account...' : 'Register' }}
-        </button>
-        <p class="auth-footer">
-          Already have an account?
-          <router-link to="/login">Login here</router-link>
-        </p>
-      </form>
-    </div>
+        <form @submit.prevent="handleRegister" class="space-y-6">
+          <div class="space-y-2">
+            <Label for="username">Username</Label>
+            <Input
+              id="username"
+              v-model="username"
+              type="text"
+              required
+              placeholder="Choose a username"
+              :disabled="authStore.isLoading"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="email">Email</Label>
+            <Input
+              id="email"
+              v-model="email"
+              type="email"
+              required
+              placeholder="your.email@mit.edu"
+              :disabled="authStore.isLoading"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="password">Password</Label>
+            <Input
+              id="password"
+              v-model="password"
+              type="password"
+              required
+              placeholder="Choose a password (min. 8 characters)"
+              minlength="8"
+              :disabled="authStore.isLoading"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              v-model="confirmPassword"
+              type="password"
+              required
+              placeholder="Confirm your password"
+              :disabled="authStore.isLoading"
+              :class="{ 'border-destructive': confirmPassword && !passwordsMatch }"
+            />
+            <p v-if="confirmPassword && !passwordsMatch" class="text-sm text-destructive">
+              Passwords do not match
+            </p>
+          </div>
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20 whitespace-pre-line">
+            <strong>Registration Error:</strong><br>
+            {{ authStore.error }}
+          </div>
+          <Button
+            type="submit"
+            :disabled="authStore.isLoading || !passwordsMatch || password.length < 8"
+            class="w-full"
+            size="lg"
+          >
+            {{ authStore.isLoading ? 'Creating account...' : 'Register' }}
+          </Button>
+          <p class="text-center text-sm text-muted-foreground">
+            Already have an account?
+            <router-link to="/login" class="text-primary font-semibold hover:underline">
+              Login here
+            </router-link>
+          </p>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { authService } from '../services/auth'
-import { checkBackendConnection } from '../utils/backendCheck'
+import { useAuthStore } from '@/stores/authStore'
+import { checkBackendConnection } from '@/utils/backendCheck'
+import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const username = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const error = ref('')
-const loading = ref(false)
-const backendStatus = ref(null)
+const backendStatus = ref<{ success: boolean; message?: string } | null>(null)
 
 // Get API base URL for display
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -99,36 +121,21 @@ onMounted(async () => {
 })
 
 const handleRegister = async () => {
-  error.value = ''
-
   if (!passwordsMatch.value) {
-    error.value = 'Passwords do not match'
     return
   }
 
   if (password.value.length < 8) {
-    error.value = 'Password must be at least 8 characters long'
     return
   }
 
-  loading.value = true
-  error.value = '' // Clear previous errors
-
-  const result = await authService.register(username.value, password.value, email.value)
+  const result = await authStore.register(username.value, password.value, email.value)
 
   if (result.success) {
     // Redirect to items page after successful registration
     router.push('/items')
-  } else {
-    // Show more detailed error message
-    const errorMsg = result.error || 'Registration failed. Please try again.'
-    error.value = errorMsg
-    
-    // Log for debugging
-    console.error('Registration failed:', result)
   }
-
-  loading.value = false
+  // Error is handled by authStore.authError
 }
 </script>
 

@@ -2,11 +2,18 @@
  * Utility functions for working with JWT tokens
  */
 
+interface JWTPayload {
+  sub?: string
+  exp?: number
+  [key: string]: unknown
+}
+
 /**
  * Decode a JWT token without verification (for getting payload)
  * Note: This does NOT verify the signature. Always verify tokens on the backend.
  */
-export function decodeJWT(token) {
+export function decodeJWT(token: string | null): JWTPayload | null {
+  if (!token) return null
   try {
     const base64Url = token.split('.')[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
@@ -16,7 +23,7 @@ export function decodeJWT(token) {
         .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     )
-    return JSON.parse(jsonPayload)
+    return JSON.parse(jsonPayload) as JWTPayload
   } catch (error) {
     console.error('Error decoding JWT:', error)
     return null
@@ -26,7 +33,7 @@ export function decodeJWT(token) {
 /**
  * Get user ID from access token
  */
-export function getUserIdFromToken(accessToken) {
+export function getUserIdFromToken(accessToken: string | null): string | null {
   if (!accessToken) return null
   const payload = decodeJWT(accessToken)
   return payload?.sub || null
@@ -35,10 +42,11 @@ export function getUserIdFromToken(accessToken) {
 /**
  * Check if token is expired (client-side check only)
  */
-export function isTokenExpired(token) {
+export function isTokenExpired(token: string | null): boolean {
   if (!token) return true
   const payload = decodeJWT(token)
   if (!payload || !payload.exp) return true
   const expirationTime = payload.exp * 1000 // Convert to milliseconds
   return Date.now() >= expirationTime
 }
+

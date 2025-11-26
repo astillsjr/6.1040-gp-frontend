@@ -2,7 +2,7 @@
  * List of valid MIT dorm names for validation
  * Matches the backend UserProfile concept validation
  */
-export const VALID_DORMS = [
+export const VALID_DORMS: readonly string[] = [
   'Baker House',
   'Burton-Conner',
   'East Campus',
@@ -14,4 +14,5 @@ export const VALID_DORMS = [
   'Random Hall',
   'Simmons Hall',
   'West Garage',
-]
+] as const
+

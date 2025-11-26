@@ -1,342 +1,215 @@
 <template>
-  <div class="items-view">
-    <div class="container">
-      <div class="header">
-        <h1>Browse Items</h1>
-        <router-link 
-          v-if="isAuthenticated" 
-          to="/items/new" 
-          class="btn btn-primary"
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div class="max-w-6xl mx-auto px-4 py-4">
+        <div class="flex items-center justify-end mb-4">
+          <Badge v-if="authStore.isAuthenticated" class="bg-green-100 text-green-800 border-green-200">
+            {{ userPoints }} pts
+          </Badge>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative mb-3">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search for items..."
+            :model-value="searchQuery"
+            @update:model-value="searchQuery = $event"
+            class="pl-10 pr-4"
+          />
+        </div>
+
+        <!-- Filter Toggle -->
+        <Button
+          variant="outline"
+          size="sm"
+          @click="showFilters = !showFilters"
+          class="w-full mb-3 bg-gray-900 text-white border-gray-900 hover:bg-gray-800"
         >
-          + List New Item
-        </router-link>
-        <router-link 
-          v-else 
-          to="/login" 
-          class="btn btn-primary"
-        >
-          + List New Item
-        </router-link>
-      </div>
-      
-      <div class="search-section">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search items..."
-          class="search-input"
-        />
-      </div>
-      
-      <div v-if="loading" class="loading">Loading items...</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      <div v-else-if="items.length === 0" class="empty-state">
-        <p>No items found.</p>
-        <p v-if="isAuthenticated" style="margin-top: 8px;">
-          <router-link to="/items/new" class="btn btn-primary" style="display: inline-block;">
-            Be the first to list an item!
-          </router-link>
-        </p>
-        <p v-else style="margin-top: 8px; color: #718096;">
-          <router-link to="/register">Sign up</router-link> to list items and borrow from the community.
-        </p>
-      </div>
-      <div v-else class="items-grid">
-        <div v-for="item in items" :key="item._id" class="item-card">
-          <div class="item-image">
-            <span v-if="!item.photoUrl">📦</span>
-            <img v-else :src="item.photoUrl" :alt="item.title" />
+          <SlidersHorizontal class="w-4 h-4 mr-2" />
+          Filters
+        </Button>
+
+        <!-- Filters -->
+        <div v-if="showFilters" class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="text-sm text-gray-600 mb-1 block">Category</label>
+            <Select :model-value="selectedCategory" @update:model-value="selectedCategory = $event">
+              <SelectItem value="all" label="All Categories" />
+              <SelectItem
+                v-for="cat in categories.slice(1)"
+                :key="cat"
+                :value="cat"
+                :label="cat"
+              />
+            </Select>
           </div>
-          <div class="item-content">
-            <h3>{{ item.title }}</h3>
-            <p class="item-category">{{ item.category }}</p>
-            <p class="item-description">{{ item.description }}</p>
-            <div class="item-footer">
-              <span class="item-status">{{ item.status }}</span>
-              <button 
-                v-if="isAuthenticated" 
-                @click="handleBorrow(item)" 
-                class="btn-borrow"
-              >
-                Borrow
-              </button>
-              <router-link 
-                v-else 
-                to="/login" 
-                class="btn-borrow"
-              >
-                Login to Borrow
-              </router-link>
-            </div>
+          <div>
+            <label class="text-sm text-gray-600 mb-1 block">Dorm</label>
+            <Select :model-value="selectedDorm" @update:model-value="selectedDorm = $event">
+              <SelectItem value="all" label="All Dorms" />
+              <SelectItem
+                v-for="dorm in dorms.slice(1)"
+                :key="dorm"
+                :value="dorm"
+                :label="dorm"
+              />
+            </Select>
           </div>
         </div>
+
+        <!-- Quick Categories -->
+        <div class="flex gap-2 overflow-x-auto pb-1">
+          <Badge
+            v-for="cat in quickCategories"
+            :key="cat"
+            variant="outline"
+            class="cursor-pointer whitespace-nowrap bg-gray-900 text-white border-gray-900 hover:bg-gray-800"
+            @click="handleCategoryClick(cat)"
+          >
+            {{ cat }}
+          </Badge>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <div class="flex items-center justify-between mb-4">
+        <p class="text-sm text-gray-600">
+          {{ filteredItems.length }} items available
+        </p>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="itemStore.isLoading" class="text-center py-12">
+        <p class="text-gray-500">Loading items...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="itemStore.error" class="text-center py-12">
+        <p class="text-red-500 mb-4">{{ itemStore.error }}</p>
+        <Button variant="outline" @click="itemStore.fetchItems()">
+          Try Again
+        </Button>
+      </div>
+
+      <!-- Items Grid -->
+      <div v-else-if="filteredItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ItemCard
+          v-for="item in filteredItems"
+          :key="item.id"
+          :item="item"
+          @click="handleItemClick(item)"
+        />
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="text-center py-12">
+        <p class="text-gray-500">No items found matching your search.</p>
+        <Button
+          variant="outline"
+          @click="clearFilters"
+          class="mt-4"
+        >
+          Clear Filters
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { itemListingAPI } from '../services/api'
-import { authService } from '../services/auth'
+import { useAuthStore } from '@/stores/authStore'
+import { useItemStore, type DisplayItem } from '@/stores/itemStore'
+import { Button, Input, Badge } from '@/components/ui'
+import Select from '@/components/ui/Select.vue'
+import SelectItem from '@/components/ui/SelectItem.vue'
+import ItemCard from '@/components/items/ItemCard.vue'
+import { Search, SlidersHorizontal } from 'lucide-vue-next'
 
 const router = useRouter()
-const loading = ref(true)
-const error = ref('')
-const items = ref([])
+const authStore = useAuthStore()
+const itemStore = useItemStore()
+
 const searchQuery = ref('')
+const selectedCategory = ref('all')
+const selectedDorm = ref('all')
+const showFilters = ref(false)
 
-const isAuthenticated = computed(() => authService.isAuthenticated())
+const categories = ['All', 'Tools', 'Electronics', 'Professional Attire', 'Craft Materials', 'Photography']
+const dorms = ['All Dorms', 'Simmons Hall', 'Next House', 'MacGregor House', 'Burton-Conner', 'New House']
+const quickCategories = ['All', 'Tools', 'Electronics', 'Attire', 'Craft']
 
+// Fetch items on mount
 onMounted(async () => {
-  await loadItems()
+  await itemStore.fetchItems()
 })
 
+// Watch filters and refetch (with debounce for search)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+watch([selectedCategory, selectedDorm], async () => {
+  await itemStore.fetchItems({
+    category: selectedCategory.value,
+    dorm: selectedDorm.value,
+    searchQuery: searchQuery.value,
+  })
+})
+
+// Debounce search query
 watch(searchQuery, () => {
-  loadItems()
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  searchTimeout = setTimeout(async () => {
+    await itemStore.fetchItems({
+      category: selectedCategory.value,
+      dorm: selectedDorm.value,
+      searchQuery: searchQuery.value,
+    })
+  }, 300) // 300ms debounce
 })
 
-const loadItems = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-    // This will need to be implemented based on ItemListing.searchItems API
-    // For now, showing placeholder
-    items.value = []
-    error.value = 'Item search not yet fully implemented'
-  } catch (err) {
-    error.value = 'Failed to load items'
-    console.error(err)
-  } finally {
-    loading.value = false
+// Filtered items (store handles API filtering, but we can do client-side filtering too)
+const filteredItems = computed(() => {
+  return itemStore.items.filter((item) => {
+    const matchesSearch =
+      !searchQuery.value ||
+      item.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const matchesCategory =
+      selectedCategory.value === 'all' || item.category === selectedCategory.value
+    const matchesDorm = selectedDorm.value === 'all' || item.dorm === selectedDorm.value
+    return matchesSearch && matchesCategory && matchesDorm
+  })
+})
+
+const userPoints = computed(() => {
+  // TODO: Get from userProfileStore when implemented
+  return '1,250'
+})
+
+function handleCategoryClick(cat: string) {
+  if (cat === 'All') {
+    selectedCategory.value = 'all'
+  } else if (cat === 'Attire') {
+    selectedCategory.value = 'Professional Attire'
+  } else {
+    selectedCategory.value = cat
   }
 }
 
-const handleBorrow = (item) => {
-  if (!isAuthenticated.value) {
-    router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
-    return
-  }
-  // TODO: Implement borrow functionality
-  console.log('Borrow item:', item)
-  alert('Borrow functionality coming soon!')
+function clearFilters() {
+  searchQuery.value = ''
+  selectedCategory.value = 'all'
+  selectedDorm.value = 'all'
+}
+
+function handleItemClick(item: DisplayItem) {
+  router.push(`/items/${item.id}`)
 }
 </script>
-
-<style scoped>
-.items-view {
-  padding: 48px 24px;
-  min-height: calc(100vh - 70px);
-  background: linear-gradient(to bottom, #F5F7FA 0%, #FFFFFF 100%);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 36px;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.header h1 {
-  font-size: 42px;
-  color: #1A1A1A;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.search-section {
-  margin-bottom: 36px;
-}
-
-.search-input {
-  width: 100%;
-  max-width: 500px;
-  padding: 14px 20px;
-  border: 2px solid #E2E8F0;
-  border-radius: 10px;
-  font-size: 16px;
-  background-color: white;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #2E7D32;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
-}
-
-.btn {
-  padding: 14px 28px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
-  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
-}
-
-.items-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 28px;
-}
-
-.item-card {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  border: 1px solid #E2E8F0;
-  cursor: pointer;
-}
-
-.item-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 24px rgba(46, 125, 50, 0.15);
-  border-color: #2E7D32;
-}
-
-.item-image {
-  width: 100%;
-  height: 220px;
-  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 72px;
-  position: relative;
-  overflow: hidden;
-}
-
-.item-image::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(46, 125, 50, 0.05) 0%, transparent 100%);
-}
-
-.item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  position: relative;
-  z-index: 1;
-}
-
-.item-content {
-  padding: 24px;
-}
-
-.item-content h3 {
-  font-size: 22px;
-  margin-bottom: 10px;
-  color: #1A1A1A;
-  font-weight: 600;
-}
-
-.item-category {
-  color: #2E7D32;
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.item-description {
-  color: #4A5568;
-  margin-bottom: 18px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.6;
-  font-size: 15px;
-}
-
-.item-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.item-status {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-  color: #2E7D32;
-  text-transform: capitalize;
-}
-
-.btn-borrow {
-  padding: 8px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-  display: inline-block;
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
-}
-
-.btn-borrow:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
-  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
-}
-
-.loading,
-.error,
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  font-size: 18px;
-  color: #4A5568;
-}
-
-.error {
-  color: #A31F34;
-  background-color: #FEE2E2;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #FECACA;
-  max-width: 600px;
-  margin: 0 auto;
-}
-</style>

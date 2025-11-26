@@ -1,5 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { authService } from '../services/auth'
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -35,6 +35,12 @@ const router = createRouter({
       // No auth required - everyone can browse items
     },
     {
+      path: '/items/:id',
+      name: 'ItemDetail',
+      component: () => import('../views/ItemDetailView.vue'),
+      // No auth required - everyone can view item details
+    },
+    {
       path: '/items/new',
       name: 'NewItem',
       component: () => import('../views/NewItemView.vue'),
@@ -44,8 +50,9 @@ const router = createRouter({
 })
 
 // Navigation guard to check authentication
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = authService.isAuthenticated()
+router.beforeEach((to: RouteLocationNormalized, _from, next) => {
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
 
   // Only protect routes that explicitly require auth
   if (to.meta.requiresAuth && !isAuthenticated) {
@@ -59,3 +66,4 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
