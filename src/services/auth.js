@@ -48,7 +48,7 @@ export const authService = {
       let errorMessage = 'Registration failed. Please try again.'
       
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please check your connection and try again.'
+        errorMessage = 'Request timed out. This may happen if:\n1. Backend service is waking up (Render free tier can take 30+ seconds)\n2. Network connection issues\n3. Backend is not responding\n\nPlease wait a moment and try again.'
       } else if (error.code === 'ERR_NETWORK' || !error.response) {
         errorMessage = 'Cannot connect to server. Please check:\n1. Backend is running\n2. VITE_API_BASE_URL is set correctly\n3. No CORS issues'
       } else if (error.response?.status === 404) {

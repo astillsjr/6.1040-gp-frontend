@@ -3,22 +3,46 @@ import axios from 'axios'
 // Get API base URL from environment or default to /api for local dev
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
-// Log API configuration for debugging (only in dev)
-if (import.meta.env.DEV) {
-  console.log('🔧 API Configuration:', {
-    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-    resolved: API_BASE_URL,
-    mode: import.meta.env.MODE
-  })
+// Helper function to build API endpoint paths
+// Handles cases where API_BASE_URL may or may not include /api
+// Supports: https://backend.onrender.com/api or https://backend.onrender.com
+function buildApiPath(endpoint) {
+  // Remove leading slash from endpoint if present
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
+  
+  // Normalize API_BASE_URL (remove trailing slash if present)
+  const normalizedBase = API_BASE_URL.endsWith('/') 
+    ? API_BASE_URL.slice(0, -1) 
+    : API_BASE_URL
+  
+  // If API_BASE_URL ends with /api (with or without trailing slash), don't add /api again
+  if (normalizedBase.endsWith('/api')) {
+    return `/${cleanEndpoint}`
+  }
+  // If API_BASE_URL is just /api (local dev), use as is
+  if (normalizedBase === '/api') {
+    return `/${cleanEndpoint}`
+  }
+  // Otherwise, add /api prefix
+  return `/api/${cleanEndpoint}`
 }
 
+// Log API configuration for debugging
+console.log('🔧 API Configuration:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  resolved: API_BASE_URL,
+  mode: import.meta.env.MODE,
+  isProduction: import.meta.env.PROD
+})
+
 // Create axios instance
+// Increased timeout for Render free tier which can take 30+ seconds to wake up
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 60000, // 60 second timeout for Render cold starts
 })
 
 // Add access token to requests if available
@@ -28,6 +52,11 @@ api.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
+    // Log the full URL being called for debugging
+    const fullUrl = config.baseURL && config.url
+      ? `${config.baseURL}${config.url}`
+      : config.url
+    console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${fullUrl}`)
     return config
   },
   (error) => {
@@ -47,10 +76,19 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken')
         if (refreshToken) {
-          // Fix: Don't double up on /api - API_BASE_URL already includes it or is the full base
-          const refreshUrl = API_BASE_URL.endsWith('/api') 
-            ? `${API_BASE_URL}/UserAuthentication/refreshAccessToken`
-            : `${API_BASE_URL}/api/UserAuthentication/refreshAccessToken`
+          // Use the same buildApiPath helper for consistency
+          const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
+          // Build full URL - handle both absolute and relative baseURLs
+          let refreshUrl
+          if (API_BASE_URL.startsWith('http')) {
+            // Absolute URL
+            refreshUrl = API_BASE_URL.endsWith('/') 
+              ? `${API_BASE_URL.slice(0, -1)}${refreshPath}`
+              : `${API_BASE_URL}${refreshPath}`
+          } else {
+            // Relative URL (like /api)
+            refreshUrl = `${API_BASE_URL}${refreshPath}`
+          }
           
           const response = await axios.post(refreshUrl, {
             refreshToken,
@@ -77,30 +115,30 @@ api.interceptors.response.use(
 
 // API methods for different concepts
 export const authAPI = {
-  register: (data) => api.post('/api/UserAuthentication/register', data),
-  login: (data) => api.post('/api/UserAuthentication/login', data),
-  logout: (data) => api.post('/api/UserAuthentication/logout', data),
-  changePassword: (data) => api.post('/api/UserAuthentication/changePassword', data),
-  deleteAccount: (data) => api.post('/api/UserAuthentication/deleteAccount', data),
+  register: (data) => api.post(buildApiPath('UserAuthentication/register'), data),
+  login: (data) => api.post(buildApiPath('UserAuthentication/login'), data),
+  logout: (data) => api.post(buildApiPath('UserAuthentication/logout'), data),
+  changePassword: (data) => api.post(buildApiPath('UserAuthentication/changePassword'), data),
+  deleteAccount: (data) => api.post(buildApiPath('UserAuthentication/deleteAccount'), data),
 }
 
 export const userProfileAPI = {
-  createProfile: (data) => api.post('/api/UserProfile/createProfile', data),
-  updateProfile: (data) => api.post('/api/UserProfile/updateProfile', data),
-  getProfile: (data) => api.post('/api/UserProfile/getProfile', data),
+  createProfile: (data) => api.post(buildApiPath('UserProfile/createProfile'), data),
+  updateProfile: (data) => api.post(buildApiPath('UserProfile/updateProfile'), data),
+  getProfile: (data) => api.post(buildApiPath('UserProfile/getProfile'), data),
 }
 
 export const itemListingAPI = {
-  createItem: (data) => api.post('/api/ItemListing/createItem', data),
-  updateItem: (data) => api.post('/api/ItemListing/updateItem', data),
-  getItem: (data) => api.post('/api/ItemListing/getItem', data),
-  searchItems: (data) => api.post('/api/ItemListing/searchItems', data),
+  createItem: (data) => api.post(buildApiPath('ItemListing/createItem'), data),
+  updateItem: (data) => api.post(buildApiPath('ItemListing/updateItem'), data),
+  getItem: (data) => api.post(buildApiPath('ItemListing/getItem'), data),
+  searchItems: (data) => api.post(buildApiPath('ItemListing/searchItems'), data),
   // Add other ItemListing methods as needed
 }
 
 // Generic method for calling any concept endpoint
 export const callConcept = (concept, action, data) => {
-  return api.post(`/api/${concept}/${action}`, data)
+  return api.post(buildApiPath(`${concept}/${action}`), data)
 }
 
 export default api
