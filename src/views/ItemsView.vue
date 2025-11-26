@@ -16,7 +16,7 @@
             type="text"
             placeholder="Search for items..."
             :model-value="searchQuery"
-            @update:model-value="searchQuery = $event"
+            @update:model-value="searchQuery = String($event)"
             class="pl-10 pr-4"
           />
         </div>
