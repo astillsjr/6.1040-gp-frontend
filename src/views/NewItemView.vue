@@ -122,18 +122,129 @@
               </p>
             </div>
 
-            <!-- Photo URL (optional, for now) -->
+            <!-- Photo URLs (optional) -->
             <div class="space-y-2">
-              <Label for="photoUrl">Photo URL (Optional)</Label>
-              <Input
-                id="photoUrl"
-                v-model="formData.photoUrl"
-                type="url"
-                placeholder="https://example.com/image.jpg"
+              <Label>Photo URLs (Optional)</Label>
+              <div v-for="(_, index) in formData.photoUrls" :key="index" class="flex gap-2">
+                <Input
+                  v-model="formData.photoUrls[index]"
+                  type="url"
+                  :placeholder="`Photo URL ${index + 1}: https://example.com/image.jpg`"
+                  :disabled="itemStore.isLoading"
+                  class="flex-1"
+                />
+                <Button
+                  v-if="formData.photoUrls.length > 1"
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  @click="removePhotoField(index)"
+                  :disabled="itemStore.isLoading"
+                >
+                  Remove
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="addPhotoField"
                 :disabled="itemStore.isLoading"
-              />
+              >
+                + Add Another Photo
+              </Button>
               <p class="text-sm text-muted-foreground">
-                You can add more photos after creating the item
+                Add multiple photos to showcase your item
+              </p>
+            </div>
+
+            <!-- Availability Windows (for BORROW only) -->
+            <div v-if="formData.listingType === 'BORROW'" class="space-y-4 p-4 border rounded-lg bg-blue-50/50">
+              <div class="space-y-2">
+                <Label class="text-base font-semibold">Availability Windows *</Label>
+                <p class="text-sm text-muted-foreground">
+                  When is this item available for pickup and return? Add one or more time windows.
+                </p>
+              </div>
+
+              <div v-for="(window, index) in availabilityWindows" :key="index" class="space-y-3 p-4 border rounded-lg bg-white">
+                <div class="flex justify-between items-center">
+                  <Label class="font-medium">Window {{ index + 1 }}</Label>
+                  <Button
+                    v-if="availabilityWindows.length > 1"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="removeAvailabilityWindow(index)"
+                    :disabled="itemStore.isLoading"
+                  >
+                    Remove
+                  </Button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <Label :for="`startDate-${index}`">Start Date</Label>
+                    <Input
+                      :id="`startDate-${index}`"
+                      v-model="window.startDate"
+                      type="date"
+                      required
+                      :disabled="itemStore.isLoading"
+                    />
+                  </div>
+                  <div class="space-y-2">
+                    <Label :for="`startTime-${index}`">Start Time</Label>
+                    <Input
+                      :id="`startTime-${index}`"
+                      v-model="window.startTime"
+                      type="time"
+                      step="1800"
+                      required
+                      :disabled="itemStore.isLoading"
+                    />
+                    <p class="text-xs text-muted-foreground">30-minute intervals</p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label :for="`endDate-${index}`">End Date</Label>
+                    <Input
+                      :id="`endDate-${index}`"
+                      v-model="window.endDate"
+                      type="date"
+                      required
+                      :disabled="itemStore.isLoading"
+                    />
+                  </div>
+                  <div class="space-y-2">
+                    <Label :for="`endTime-${index}`">End Time</Label>
+                    <Input
+                      :id="`endTime-${index}`"
+                      v-model="window.endTime"
+                      type="time"
+                      step="1800"
+                      required
+                      :disabled="itemStore.isLoading"
+                    />
+                    <p class="text-xs text-muted-foreground">30-minute intervals</p>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                @click="addAvailabilityWindow"
+                :disabled="itemStore.isLoading"
+              >
+                + Add Another Time Window
+              </Button>
+            </div>
+
+            <!-- Transfer Notice -->
+            <div v-if="formData.listingType === 'TRANSFER'" class="p-4 border rounded-lg bg-amber-50">
+              <p class="text-sm text-amber-800">
+                <strong>Note:</strong> Transfer items will be given permanently to the recipient. You can coordinate pickup details with them after they request the item.
               </p>
             </div>
 
@@ -165,6 +276,9 @@
                 {{ itemStore.isLoading ? 'Creating...' : 'List Item' }}
               </Button>
             </div>
+            <p v-if="formData.listingType === 'BORROW' && !isFormValid" class="text-sm text-amber-600 text-right">
+              * Please add at least one availability window for borrowable items
+            </p>
           </form>
         </CardContent>
       </Card>
@@ -196,19 +310,71 @@ const formData = ref({
   condition: '',
   listingType: '' as 'BORROW' | 'TRANSFER' | '',
   dormVisibility: '',
-  photoUrl: '',
+  photoUrls: [''] as string[], // Changed to array for multiple photos
 })
 
+interface AvailabilityWindow {
+  startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
+}
+
+const availabilityWindows = ref<AvailabilityWindow[]>([
+  { startDate: '', startTime: '', endDate: '', endTime: '' }
+])
+
 const isFormValid = computed(() => {
-  return (
+  const basicValid = 
     formData.value.title.trim() !== '' &&
     formData.value.description.trim() !== '' &&
     formData.value.category !== '' &&
     formData.value.condition !== '' &&
     formData.value.listingType !== '' &&
     formData.value.dormVisibility !== ''
-  )
+
+  // For BORROW items, require at least one valid availability window
+  if (formData.value.listingType === 'BORROW') {
+    const hasValidWindow = availabilityWindows.value.some(w => 
+      w.startDate && w.startTime && w.endDate && w.endTime
+    )
+    return basicValid && hasValidWindow
+  }
+
+  return basicValid
 })
+
+function addPhotoField() {
+  formData.value.photoUrls.push('')
+}
+
+function removePhotoField(index: number) {
+  formData.value.photoUrls.splice(index, 1)
+  if (formData.value.photoUrls.length === 0) {
+    formData.value.photoUrls.push('')
+  }
+}
+
+function addAvailabilityWindow() {
+  availabilityWindows.value.push({ 
+    startDate: '', 
+    startTime: '', 
+    endDate: '', 
+    endTime: '' 
+  })
+}
+
+function removeAvailabilityWindow(index: number) {
+  availabilityWindows.value.splice(index, 1)
+  if (availabilityWindows.value.length === 0) {
+    availabilityWindows.value.push({ 
+      startDate: '', 
+      startTime: '', 
+      endDate: '', 
+      endTime: '' 
+    })
+  }
+}
 
 async function handleSubmit() {
   if (!authStore.userId) {
@@ -243,17 +409,48 @@ async function handleSubmit() {
       throw new Error('Invalid listing type')
     }
 
-    // Step 3: Add photo if provided
-    if (formData.value.photoUrl.trim()) {
+    // Step 3: Add photos if provided
+    const validPhotos = formData.value.photoUrls.filter(url => url.trim() !== '')
+    for (let i = 0; i < validPhotos.length; i++) {
       try {
         await itemListingAPI.addPhoto({
           item: itemId,
-          photoUrl: formData.value.photoUrl.trim(),
-          order: 0,
+          photoUrl: validPhotos[i].trim(),
+          order: i,
         })
       } catch (photoError) {
-        console.error('Failed to add photo:', photoError)
+        console.error(`Failed to add photo ${i + 1}:`, photoError)
         // Don't fail the whole operation if photo fails
+      }
+    }
+
+    // Step 4: Add availability windows for BORROW items
+    if (formData.value.listingType === 'BORROW') {
+      const validWindows = availabilityWindows.value.filter(w =>
+        w.startDate && w.startTime && w.endDate && w.endTime
+      )
+
+      for (const window of validWindows) {
+        try {
+          // Combine date and time into Date objects in local timezone
+          // Parse manually to ensure we're working with local time, not UTC
+          const [startYear, startMonth, startDay] = window.startDate.split('-').map(Number)
+          const [startHour, startMinute] = window.startTime.split(':').map(Number)
+          const [endYear, endMonth, endDay] = window.endDate.split('-').map(Number)
+          const [endHour, endMinute] = window.endTime.split(':').map(Number)
+          
+          const startDateTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute)
+          const endDateTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute)
+
+          await itemListingAPI.setAvailability({
+            item: itemId,
+            startTime: startDateTime,
+            endTime: endDateTime,
+          })
+        } catch (windowError) {
+          console.error('Failed to add availability window:', windowError)
+          // Don't fail the whole operation if a window fails
+        }
       }
     }
 

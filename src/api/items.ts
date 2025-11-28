@@ -61,9 +61,12 @@ export interface GetAllItemsResponse {
 export async function createItem(
   data: CreateItemRequest
 ): Promise<CreateItemResponse> {
+  // Include accessToken in request body for sync authentication
+  // Sync will extract user ID from token and use it as owner
+  const accessToken = localStorage.getItem('accessToken')
   const response = await apiClient.post<CreateItemResponse>(
     buildApiPath('Item/createItem'),
-    data
+    { title: data.title, description: data.description, category: data.category, condition: data.condition, accessToken }
   )
   return extractData(response)
 }
@@ -79,11 +82,16 @@ export async function createOwnerlessItem(
 }
 
 export async function updateItemDetails(data: UpdateItemDetailsRequest): Promise<void> {
-  await apiClient.post(buildApiPath('Item/updateItemDetails'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('Item/updateItemDetails'), { ...data, accessToken })
 }
 
 export async function deleteItem(data: DeleteItemRequest): Promise<void> {
-  await apiClient.post(buildApiPath('Item/deleteItem'), data)
+  // Include accessToken in request body for sync authentication
+  // Sync will verify user is owner and extract user ID from token
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('Item/deleteItem'), { item: data.item, accessToken })
 }
 
 export async function getItemById(data: GetItemByIdRequest): Promise<Item> {

@@ -46,12 +46,28 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       isLoading.value = true
       error.value = null
 
+      // Backend sync extracts user ID from token, so we only need displayName and dorm
       await userProfileAPI.createProfile(data)
       // Refresh profile after creation
       await fetchProfile(data.user)
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to create profile'
+    } catch (err: any) {
+      let errorMessage = 'Failed to create profile'
+      
+      // Provide more helpful error messages
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.response?.status === 504) {
+        errorMessage = 'Request timed out. Please check if the backend server is running and try again.'
+      } else if (err.code === 'ERR_NETWORK' || !err.response) {
+        errorMessage = 'Cannot connect to server. Please ensure the backend is running.'
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response?.data?.error || 'Invalid profile data. Please check your inputs.'
+      } else if (err.response?.status === 409) {
+        errorMessage = 'Profile already exists for this user.'
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
       error.value = errorMessage
       console.error('Error creating profile:', err)
       throw err
@@ -68,9 +84,24 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       await userProfileAPI.updateProfile(data)
       // Refresh profile after update
       await fetchProfile(data.user)
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to update profile'
+    } catch (err: any) {
+      let errorMessage = 'Failed to update profile'
+      
+      // Provide more helpful error messages
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.response?.status === 504) {
+        errorMessage = 'Request timed out. Please check if the backend server is running and try again.'
+      } else if (err.code === 'ERR_NETWORK' || !err.response) {
+        errorMessage = 'Cannot connect to server. Please ensure the backend is running.'
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response?.data?.error || 'Invalid profile data. Please check your inputs.'
+      } else if (err.response?.status === 404) {
+        errorMessage = 'Profile not found. Please create a profile first.'
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
       error.value = errorMessage
       console.error('Error updating profile:', err)
       throw err

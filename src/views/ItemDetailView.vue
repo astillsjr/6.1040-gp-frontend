@@ -108,26 +108,26 @@
             </div>
           </Card>
 
-          <div v-if="selectedDate && availableWindows.length > 0">
+          <div v-if="selectedDate && availableTimeSlots.length > 0">
             <p class="text-sm text-gray-600 mb-3 flex items-center gap-2">
               <Clock class="w-4 h-4" />
-              Available time slots for {{ formatDate(selectedDate) }}
+              Available pickup times for {{ formatDate(selectedDate) }}
             </p>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
               <Button
-                v-for="(window, idx) in availableWindows"
+                v-for="(slot, idx) in availableTimeSlots"
                 :key="idx"
                 variant="outline"
-                class="justify-start"
+                class="justify-start text-sm"
                 :class="{ 'bg-gray-900 text-white': selectedTimeSlot === idx }"
                 @click="selectedTimeSlot = idx"
               >
-                {{ formatTimeWindow(window) }}
+                {{ slot.label }}
               </Button>
             </div>
           </div>
 
-          <div v-else-if="selectedDate && availableWindows.length === 0" class="text-sm text-gray-500">
+          <div v-else-if="selectedDate && availableTimeSlots.length === 0" class="text-sm text-gray-500">
             No available time slots for this date.
           </div>
         </div>
@@ -167,9 +167,17 @@ const router = useRouter()
 const itemStore = useItemStore()
 const authStore = useAuthStore()
 
+interface TimeSlot {
+  label: string
+  startTime: Date
+  endTime: Date
+  window: AvailabilityWindow
+}
+
 const selectedDate = ref<string>('')
 const selectedTimeSlot = ref<number | null>(null)
 const availableWindows = ref<AvailabilityWindow[]>([])
+const availableTimeSlots = ref<TimeSlot[]>([])
 
 const minDate = computed(() => {
   const today = new Date()
@@ -181,7 +189,7 @@ const canRequest = computed(() => {
     authStore.isAuthenticated &&
     selectedDate.value &&
     selectedTimeSlot.value !== null &&
-    availableWindows.value.length > 0
+    availableTimeSlots.value.length > 0
   )
 })
 
@@ -203,9 +211,11 @@ onMounted(async () => {
 watch(selectedDate, async (newDate) => {
   if (newDate && itemStore.currentItem) {
     await fetchAvailabilityWindows(itemStore.currentItem.id, newDate)
+    generateTimeSlots(newDate)
     selectedTimeSlot.value = null
   } else {
     availableWindows.value = []
+    availableTimeSlots.value = []
   }
 })
 
@@ -214,15 +224,23 @@ async function fetchAvailabilityWindows(itemId: string, date?: string) {
     const windows = await itemListingAPI.getAvailabilityByItem({ item: itemId })
     
     if (date) {
-      // Filter windows for selected date
-      const selected = new Date(date + 'T00:00:00') // Add time to avoid timezone issues
+      // Filter windows for selected date - show windows that span across the selected date
+      // Parse date string manually to avoid timezone issues
+      const [year, month, day] = date.split('-').map(Number)
+      const selectedDate = new Date(year, month - 1, day)
+      const selectedDateStart = new Date(year, month - 1, day, 0, 0, 0, 0)
+      const selectedDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999)
+      
       availableWindows.value = windows.filter((window) => {
-        const windowDate = new Date(window.startTime)
-        const windowDateOnly = new Date(windowDate.getFullYear(), windowDate.getMonth(), windowDate.getDate())
-        const selectedDateOnly = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate())
+        const windowStart = new Date(window.startTime)
+        const windowEnd = new Date(window.endTime)
+        
+        // Show the window if the selected date falls within the window's range
+        // OR if the window starts/ends on the selected date
         return (
-          windowDateOnly.getTime() === selectedDateOnly.getTime() &&
-          window.status === 'AVAILABLE'
+          window.status === 'AVAILABLE' &&
+          windowStart <= selectedDateEnd &&
+          windowEnd >= selectedDateStart
         )
       })
     } else {
@@ -236,7 +254,10 @@ async function fetchAvailabilityWindows(itemId: string, date?: string) {
 }
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString)
+  // Parse the date string manually to avoid timezone conversion issues
+  // Date input gives us "YYYY-MM-DD", we want to treat this as local date
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(year, month - 1, day) // month is 0-indexed in Date constructor
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -245,22 +266,97 @@ function formatDate(dateString: string): string {
   })
 }
 
-function formatTimeWindow(window: AvailabilityWindow): string {
-  const start = new Date(window.startTime)
-  const end = new Date(window.endTime)
+/**
+ * Generates hourly time slots for the selected date based on available windows
+ */
+function generateTimeSlots(dateString: string) {
+  const slots: TimeSlot[] = []
   
-  const startTime = start.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
-  const endTime = end.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
+  if (availableWindows.value.length === 0) {
+    availableTimeSlots.value = []
+    return
+  }
+
+  const [year, month, day] = dateString.split('-').map(Number)
+  const selectedDateObj = new Date(year, month - 1, day)
   
-  return `${startTime} - ${endTime}`
+  for (const window of availableWindows.value) {
+    const windowStart = new Date(window.startTime)
+    const windowEnd = new Date(window.endTime)
+    
+    const windowStartDate = new Date(windowStart.getFullYear(), windowStart.getMonth(), windowStart.getDate())
+    const windowEndDate = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), windowEnd.getDate())
+    
+    // Determine the time range available on the selected date
+    let dayStartTime: Date
+    let dayEndTime: Date
+    
+    if (windowStartDate.getTime() === selectedDateObj.getTime()) {
+      // Selected date is the start date - use actual start time
+      dayStartTime = new Date(windowStart)
+    } else {
+      // Selected date is after start date - start at midnight
+      dayStartTime = new Date(year, month - 1, day, 0, 0, 0)
+    }
+    
+    if (windowEndDate.getTime() === selectedDateObj.getTime()) {
+      // Selected date is the end date - use actual end time
+      dayEndTime = new Date(windowEnd)
+    } else {
+      // Selected date is before end date - end at 11:59 PM
+      dayEndTime = new Date(year, month - 1, day, 23, 59, 59)
+    }
+    
+    // Generate 2-hour time slots aligned to 30-minute intervals
+    const slotDuration = 2 * 60 * 60 * 1000 // 2 hours in milliseconds
+    let currentSlotStart = new Date(dayStartTime)
+    
+    // Round to nearest 30-minute interval
+    const minutes = currentSlotStart.getMinutes()
+    const seconds = currentSlotStart.getSeconds()
+    const milliseconds = currentSlotStart.getMilliseconds()
+    
+    if (seconds > 0 || milliseconds > 0 || (minutes !== 0 && minutes !== 30)) {
+      // Round up to next 30-minute mark
+      if (minutes < 30) {
+        currentSlotStart.setMinutes(30, 0, 0)
+      } else {
+        currentSlotStart.setHours(currentSlotStart.getHours() + 1, 0, 0, 0)
+      }
+    }
+    
+    while (currentSlotStart < dayEndTime) {
+      const slotEnd = new Date(currentSlotStart.getTime() + slotDuration)
+      
+      // Make sure slot end doesn't exceed the day's available end time
+      const actualSlotEnd = slotEnd > dayEndTime ? new Date(dayEndTime) : slotEnd
+      
+      // Only add slot if it's at least 1 hour long
+      if (actualSlotEnd.getTime() - currentSlotStart.getTime() >= 60 * 60 * 1000) {
+        const startTimeStr = currentSlotStart.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+        const endTimeStr = actualSlotEnd.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+        
+        slots.push({
+          label: `${startTimeStr} - ${endTimeStr}`,
+          startTime: new Date(currentSlotStart),
+          endTime: new Date(actualSlotEnd),
+          window: window,
+        })
+      }
+      
+      currentSlotStart = new Date(slotEnd)
+    }
+  }
+  
+  availableTimeSlots.value = slots
 }
 
 function handleBack() {
@@ -274,7 +370,7 @@ async function handleRequestBorrow() {
   }
 
   try {
-    const selectedWindow = availableWindows.value[selectedTimeSlot.value]
+    const selectedSlot = availableTimeSlots.value[selectedTimeSlot.value]
     
     await itemRequestingAPI.createRequest({
       requester: authStore.userId!,
@@ -282,8 +378,8 @@ async function handleRequestBorrow() {
       type: 'BORROW',
       status: 'PENDING',
       requesterNotes: '',
-      requestedStartTime: new Date(selectedWindow.startTime),
-      requestedEndTime: new Date(selectedWindow.endTime),
+      requestedStartTime: selectedSlot.startTime,
+      requestedEndTime: selectedSlot.endTime,
     })
 
     // Show success message and navigate

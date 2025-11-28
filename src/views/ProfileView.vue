@@ -9,13 +9,19 @@
 
     <!-- Content -->
     <div class="max-w-4xl mx-auto px-4 py-6">
+      <!-- Welcome Message for New Users -->
+      <div v-if="isNewUser && !userProfileStore.hasProfile" class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6">
+        <h2 class="text-lg font-semibold mb-2">👋 Welcome to BorrowMIT!</h2>
+        <p class="text-sm">Please complete your profile to start browsing and listing items.</p>
+      </div>
+
       <!-- Loading State -->
       <div v-if="userProfileStore.isLoading" class="text-center py-12">
         <p class="text-gray-500">Loading profile...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="userProfileStore.error && !userProfileStore.hasProfile" class="text-center py-12">
+      <div v-else-if="userProfileStore.error && !userProfileStore.hasProfile && !isNewUser" class="text-center py-12">
         <p class="text-red-500 mb-4">{{ userProfileStore.error }}</p>
         <Button variant="outline" @click="loadProfile">Try Again</Button>
       </div>
@@ -101,7 +107,15 @@
               </div>
 
               <div v-if="userProfileStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
-                {{ userProfileStore.error }}
+                <strong>Error:</strong> {{ userProfileStore.error }}
+                <div v-if="userProfileStore.error.includes('504') || userProfileStore.error.includes('timeout')" class="mt-2 text-xs">
+                  <p>⚠️ Backend server is not responding. Please make sure:</p>
+                  <ul class="list-disc ml-4 mt-1">
+                    <li>Your backend server is running</li>
+                    <li>The API URL is configured correctly</li>
+                    <li>There are no network/CORS issues</li>
+                  </ul>
+                </div>
               </div>
 
               <div v-if="successMessage" class="bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200">
@@ -126,17 +140,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useUserProfileStore } from '@/stores/userProfileStore'
 import { Button, Input, Label, Textarea, Card, CardHeader, CardTitle, CardDescription, CardContent, Select, SelectItem } from '@/components/ui'
 import { Star } from 'lucide-vue-next'
 import { VALID_DORMS } from '@/utils/validDorms'
 
+const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const userProfileStore = useUserProfileStore()
 
 const validDorms = VALID_DORMS
 const successMessage = ref('')
+const isNewUser = computed(() => route.query.welcome === 'true')
 
 const formData = ref({
   displayName: '',
@@ -184,7 +202,7 @@ async function loadProfile() {
 
   await userProfileStore.fetchProfile(authStore.userId)
   
-  // If no profile exists, initialize form with empty values
+  // If no profile exists, initialize form with username as default displayName
   if (!userProfileStore.hasProfile) {
     formData.value = {
       displayName: authStore.username || '',
@@ -200,24 +218,30 @@ async function handleUpdateProfile() {
   }
 
   successMessage.value = ''
+  const isCreatingProfile = !userProfileStore.hasProfile
 
   try {
     if (userProfileStore.hasProfile) {
-      // Update existing profile
+      // Update existing profile (supports all fields including bio)
       await userProfileStore.updateProfile({
         user: authStore.userId,
         displayName: formData.value.displayName.trim(),
         dorm: formData.value.dorm,
         bio: formData.value.bio.trim(),
       })
+      successMessage.value = 'Profile updated successfully!'
+      setTimeout(() => {
+        successMessage.value = ''
+      }, 3000)
     } else {
-      // Create new profile
+      // Create new profile (only supports displayName and dorm initially)
       await userProfileStore.createProfile({
         user: authStore.userId,
         displayName: formData.value.displayName.trim(),
         dorm: formData.value.dorm,
       })
-      // Update bio separately if provided
+      
+      // If bio was provided, update the profile with it
       if (formData.value.bio.trim()) {
         await userProfileStore.updateProfile({
           user: authStore.userId,
@@ -226,12 +250,20 @@ async function handleUpdateProfile() {
           bio: formData.value.bio.trim(),
         })
       }
-    }
 
-    successMessage.value = 'Profile updated successfully!'
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
+      // For new users, redirect to items page after successful profile creation
+      if (isNewUser.value) {
+        successMessage.value = 'Profile created successfully! Welcome to BorrowMIT!'
+        setTimeout(() => {
+          router.push('/items')
+        }, 1500)
+      } else {
+        successMessage.value = 'Profile created successfully!'
+        setTimeout(() => {
+          successMessage.value = ''
+        }, 3000)
+      }
+    }
   } catch (error) {
     // Error is handled by userProfileStore.error
     console.error('Failed to update profile:', error)

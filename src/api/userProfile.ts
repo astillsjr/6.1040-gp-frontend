@@ -50,15 +50,26 @@ export interface GetUsersByDormResponse {
 export async function createProfile(
   data: CreateProfileRequest
 ): Promise<CreateProfileResponse> {
+  // Include accessToken in request body for sync authentication
+  // Sync extracts user ID from token, so we don't send 'user' field
+  const accessToken = localStorage.getItem('accessToken')
   const response = await apiClient.post<CreateProfileResponse>(
     buildApiPath('UserProfile/createProfile'),
-    data
+    { displayName: data.displayName, dorm: data.dorm, accessToken }
   )
   return extractData(response)
 }
 
 export async function updateProfile(data: UpdateProfileRequest): Promise<void> {
-  await apiClient.post(buildApiPath('UserProfile/updateProfile'), data)
+  // Include accessToken in request body for sync authentication
+  // Sync extracts user ID from token, so we don't send 'user' field
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('UserProfile/updateProfile'), {
+    displayName: data.displayName,
+    dorm: data.dorm,
+    bio: data.bio,
+    accessToken
+  })
 }
 
 export async function updateScores(data: UpdateScoresRequest): Promise<void> {

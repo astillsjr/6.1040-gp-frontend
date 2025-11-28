@@ -132,8 +132,8 @@ const handleRegister = async () => {
   const result = await authStore.register(username.value, password.value, email.value)
 
   if (result.success) {
-    // Redirect to items page after successful registration
-    router.push('/items')
+    // Redirect to profile page to complete profile setup
+    router.push({ path: '/profile', query: { welcome: 'true' } })
   }
   // Error is handled by authStore.authError
 }

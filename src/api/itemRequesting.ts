@@ -54,15 +54,27 @@ export interface GetOtherPendingRequestsResponse {
 export async function createRequest(
   data: CreateRequestRequest
 ): Promise<CreateRequestResponse> {
+  // Include accessToken in request body for sync authentication
+  // Sync will extract user ID from token and use it as requester
+  const accessToken = localStorage.getItem('accessToken')
   const response = await apiClient.post<CreateRequestResponse>(
     buildApiPath('ItemRequesting/createRequest'),
-    data
+    {
+      item: data.item,
+      type: data.type,
+      notes: data.requesterNotes,
+      startTime: data.requestedStartTime,
+      endTime: data.requestedEndTime,
+      accessToken
+    }
   )
   return extractData(response)
 }
 
 export async function acceptRequest(data: { request: string }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemRequesting/acceptRequest'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemRequesting/acceptRequest'), { request: data.request, accessToken })
 }
 
 export async function rejectRequest(data: { request: string }): Promise<void> {
@@ -73,7 +85,10 @@ export async function cancelRequest(data: {
   request: string
   user: string
 }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemRequesting/cancelRequest'), data)
+  // Include accessToken in request body for sync authentication
+  // Sync will verify the user is the requester
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemRequesting/cancelRequest'), { request: data.request, accessToken })
 }
 
 export async function getRequest(data: GetRequestRequest): Promise<ItemRequest> {

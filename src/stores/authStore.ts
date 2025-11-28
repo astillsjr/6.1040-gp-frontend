@@ -105,8 +105,8 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authAPI.register({ username: registerUsername, password, email })
       accessToken.value = response.accessToken
       refreshToken.value = response.refreshToken
-      // Store the username from registration (use response.user if available, otherwise use the username parameter)
-      username.value = response.user || registerUsername
+      // Store the username from the registration form (response.user is the userId, not username)
+      username.value = registerUsername
       syncTokensToStorage()
       updateUserIdFromToken()
 

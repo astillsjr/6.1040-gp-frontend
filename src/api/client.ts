@@ -46,13 +46,74 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 60000, // 60 second timeout for Render cold starts
 })
 
-// Add access token to requests if available
+// Helper to check if access token is expired or about to expire
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const expirationTime = payload.exp * 1000 // Convert to milliseconds
+    const currentTime = Date.now()
+    // Consider token expired if it expires within the next 60 seconds
+    return expirationTime - currentTime < 60000
+  } catch {
+    return true // If we can't parse it, consider it expired
+  }
+}
+
+// Helper to refresh access token
+async function refreshAccessTokenIfNeeded(): Promise<string | null> {
+  const accessToken = localStorage.getItem('accessToken')
+  const refreshToken = localStorage.getItem('refreshToken')
+
+  if (!accessToken || !refreshToken) {
+    return null
+  }
+
+  // Check if token is expired or about to expire
+  if (isTokenExpired(accessToken)) {
+    try {
+      const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
+      let refreshUrl: string
+      if (API_BASE_URL.startsWith('http')) {
+        refreshUrl = API_BASE_URL.endsWith('/')
+          ? `${API_BASE_URL.slice(0, -1)}${refreshPath}`
+          : `${API_BASE_URL}${refreshPath}`
+      } else {
+        refreshUrl = `${API_BASE_URL}${refreshPath}`
+      }
+
+      const response = await axios.post(refreshUrl, { refreshToken })
+      const { accessToken: newAccessToken } = response.data as { accessToken: string }
+      localStorage.setItem('accessToken', newAccessToken)
+      console.log('🔄 Access token refreshed successfully')
+      return newAccessToken
+    } catch (error) {
+      console.error('Failed to refresh access token:', error)
+      // Clear tokens and redirect to login
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      window.location.href = '/login?expired=true'
+      return null
+    }
+  }
+
+  return accessToken
+}
+
+// Add access token to requests if available, and refresh if needed
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const accessToken = localStorage.getItem('accessToken')
+  async (config: InternalAxiosRequestConfig) => {
+    // Skip token refresh for the refresh endpoint itself
+    if (config.url?.includes('refreshAccessToken')) {
+      return config
+    }
+
+    // Proactively refresh token if expired
+    const accessToken = await refreshAccessTokenIfNeeded()
+    
     if (accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
+    
     // Log the full URL being called for debugging
     const fullUrl =
       config.baseURL && config.url
@@ -66,7 +127,7 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Handle token refresh on 401 errors
+// Handle token refresh on 401 errors and potential auth-related 504 errors
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -74,12 +135,19 @@ apiClient.interceptors.response.use(
       _retry?: boolean
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 401 Unauthorized or 504 Gateway Timeout (which can be caused by expired tokens)
+    const status = error.response?.status
+    const isAuthError = status === 401
+    const isPotentialAuthTimeout = status === 504 && localStorage.getItem('accessToken')
+
+    if ((isAuthError || isPotentialAuthTimeout) && !originalRequest._retry) {
       originalRequest._retry = true
 
       try {
         const refreshToken = localStorage.getItem('refreshToken')
         if (refreshToken) {
+          console.log(`🔄 Attempting token refresh due to ${status} error`)
+          
           // Use the same buildApiPath helper for consistency
           const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
           // Build full URL - handle both absolute and relative baseURLs
@@ -104,15 +172,24 @@ apiClient.interceptors.response.use(
             originalRequest.headers.Authorization = `Bearer ${accessToken}`
           }
 
+          console.log('✅ Token refreshed, retrying request')
           return apiClient(originalRequest)
         }
       } catch (refreshError) {
         // Refresh failed, clear tokens and redirect to login
+        console.error('❌ Token refresh failed, redirecting to login')
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
-        window.location.href = '/login'
+        window.location.href = '/login?expired=true'
         return Promise.reject(refreshError)
       }
+    }
+
+    // Add more helpful error messages for common scenarios
+    if (status === 504) {
+      error.message = 'Request timed out. Please check your connection and try again.'
+    } else if (status === 401) {
+      error.message = 'Your session has expired. Please log in again.'
     }
 
     return Promise.reject(error)

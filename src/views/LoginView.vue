@@ -9,6 +9,11 @@
       </CardHeader>
       <CardContent>
         <form @submit.prevent="handleLogin" class="space-y-6">
+          <!-- Session expired notification -->
+          <div v-if="route.query.expired === 'true'" class="bg-amber-50 text-amber-800 p-3 rounded-md text-sm border border-amber-200">
+            ⏱️ Your session has expired. Please log in again to continue.
+          </div>
+          
           <div class="space-y-2">
             <Label for="username">Username</Label>
             <Input

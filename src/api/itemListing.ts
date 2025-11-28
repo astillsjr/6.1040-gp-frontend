@@ -80,7 +80,10 @@ export interface GetListingsRequest {
 }
 
 export async function listItem(data: ListItemRequest): Promise<void> {
-  await apiClient.post(buildApiPath('ItemListing/listItem'), data)
+  // Include accessToken in request body for sync authentication
+  // Sync will verify user owns the item
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemListing/listItem'), { ...data, accessToken })
 }
 
 export async function unlistItem(data: { item: string }): Promise<void> {
@@ -94,19 +97,25 @@ export async function updateListingDetails(
 }
 
 export async function addPhoto(data: AddPhotoRequest): Promise<void> {
-  await apiClient.post(buildApiPath('ItemListing/addPhoto'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemListing/addPhoto'), { ...data, accessToken })
 }
 
 export async function removePhoto(data: RemovePhotoRequest): Promise<void> {
-  await apiClient.post(buildApiPath('ItemListing/removePhoto'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemListing/removePhoto'), { ...data, accessToken })
 }
 
 export async function setAvailability(
   data: SetAvailabilityRequest
 ): Promise<SetAvailabilityResponse> {
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
   const response = await apiClient.post<SetAvailabilityResponse>(
     buildApiPath('ItemListing/setAvailability'),
-    data
+    { ...data, accessToken }
   )
   return extractData(response)
 }
@@ -124,7 +133,9 @@ export async function reserveWindow(data: ReserveWindowRequest): Promise<void> {
 export async function removeAvailability(
   data: RemoveAvailabilityRequest
 ): Promise<void> {
-  await apiClient.post(buildApiPath('ItemListing/removeAvailability'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemListing/removeAvailability'), { ...data, accessToken })
 }
 
 export async function getListingByItem(data: { item: string }): Promise<Listing> {
