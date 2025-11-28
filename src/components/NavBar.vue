@@ -27,6 +27,13 @@
             List Item
           </router-link>
           <router-link 
+            to="/activity" 
+            class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
+            active-class="bg-white/20 text-white font-semibold"
+          >
+            Activity
+          </router-link>
+          <router-link 
             to="/profile" 
             class="text-white/95 hover:text-white hover:bg-white/15 active:bg-white/20 font-medium transition-all text-sm px-4 py-2 rounded-md no-underline"
             active-class="bg-white/20 text-white font-semibold"

@@ -46,6 +46,25 @@ const router = createRouter({
       component: () => import('../views/NewItemView.vue'),
       meta: { requiresAuth: true }, // Only authenticated users can post items
     },
+    {
+      path: '/activity',
+      name: 'Activity',
+      component: () => import('../views/ActivityView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Redirect old routes to new unified Activity page
+    {
+      path: '/requests/incoming',
+      redirect: '/activity',
+    },
+    {
+      path: '/requests/my-requests',
+      redirect: '/activity',
+    },
+    {
+      path: '/transactions',
+      redirect: '/activity',
+    },
   ],
 })
 

@@ -131,6 +131,22 @@
             No available time slots for this date.
           </div>
         </div>
+
+        <!-- Request Notes -->
+        <div class="mb-6">
+          <h2 class="mb-3 text-lg font-semibold">Add a Note (Optional)</h2>
+          <Card class="p-4">
+            <Textarea
+              v-model="requestNotes"
+              placeholder="e.g., 'I need this for a class project due Friday' or 'Can we meet at the Student Center?'"
+              rows="3"
+              class="w-full"
+            />
+            <p class="text-sm text-muted-foreground mt-2">
+              Help coordinate pickup details or explain why you need this item
+            </p>
+          </Card>
+        </div>
       </div>
 
       <!-- Fixed Bottom Bar -->
@@ -155,7 +171,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useItemStore } from '@/stores/itemStore'
 import { useAuthStore } from '@/stores/authStore'
-import { Button, Badge, Card } from '@/components/ui'
+import { Button, Badge, Card, Textarea } from '@/components/ui'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import { ArrowLeft, MapPin, Star, Clock, Calendar as CalendarIcon } from 'lucide-vue-next'
 import * as itemListingAPI from '@/api/itemListing'
@@ -178,6 +194,7 @@ const selectedDate = ref<string>('')
 const selectedTimeSlot = ref<number | null>(null)
 const availableWindows = ref<AvailabilityWindow[]>([])
 const availableTimeSlots = ref<TimeSlot[]>([])
+const requestNotes = ref<string>('')
 
 const minDate = computed(() => {
   const today = new Date()
@@ -377,13 +394,13 @@ async function handleRequestBorrow() {
       item: itemStore.currentItem.id,
       type: 'BORROW',
       status: 'PENDING',
-      requesterNotes: '',
+      requesterNotes: requestNotes.value.trim(),
       requestedStartTime: selectedSlot.startTime,
       requestedEndTime: selectedSlot.endTime,
     })
 
     // Show success message and navigate
-    alert('Request submitted successfully!')
+    alert('Request submitted successfully! Check "Activity" to track its status.')
     router.push({ name: 'Items' })
   } catch (error) {
     console.error('Failed to create request:', error)

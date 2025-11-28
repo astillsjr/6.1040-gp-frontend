@@ -78,7 +78,9 @@ export async function acceptRequest(data: { request: string }): Promise<void> {
 }
 
 export async function rejectRequest(data: { request: string }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemRequesting/rejectRequest'), data)
+  // Include accessToken in request body for sync authentication
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemRequesting/rejectRequest'), { request: data.request, accessToken })
 }
 
 export async function cancelRequest(data: {
@@ -116,6 +118,24 @@ export async function getOtherPendingRequests(
 ): Promise<GetOtherPendingRequestsResponse[]> {
   const response = await apiClient.post<Array<GetOtherPendingRequestsResponse>>(
     buildApiPath('ItemRequesting/_getOtherPendingRequests'),
+    data
+  )
+  return extractData(response)
+}
+
+// Get all requests for a specific item (for owners to see incoming requests)
+export async function getRequestsByItem(data: { item: string }): Promise<ItemRequest[]> {
+  const response = await apiClient.post<ItemRequest[]>(
+    buildApiPath('ItemRequesting/_getRequestsByItem'),
+    data
+  )
+  return extractData(response)
+}
+
+// Get all requests made by a specific user (for users to see their outgoing requests)
+export async function getRequestsByRequester(data: { requester: string }): Promise<ItemRequest[]> {
+  const response = await apiClient.post<ItemRequest[]>(
+    buildApiPath('ItemRequesting/_getRequestsByRequester'),
     data
   )
   return extractData(response)

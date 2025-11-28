@@ -2,14 +2,9 @@
 import { apiClient, buildApiPath, extractData } from './client'
 
 export type TransactionType = 'BORROW' | 'TRANSFER' | 'ITEM'
-export type TransactionStatus =
-  | 'PENDING_PICKUP'
-  | 'IN_PROGRESS'
-  | 'PENDING_RETURN'
-  | 'COMPLETED'
-  | 'CANCELLED'
+export type TransactionStatus = 'PENDING_PICKUP' | 'IN_PROGRESS' | 'PENDING_RETURN' | 'COMPLETED' | 'CANCELLED'
 
-export interface Transaction {
+export interface ItemTransaction {
   _id: string
   from: string
   to: string
@@ -36,42 +31,16 @@ export interface CreateTransactionResponse {
   transaction: string
 }
 
-export interface GetTransactionRequest {
-  transaction: string
-}
-
-export async function createTransaction(
-  data: CreateTransactionRequest
-): Promise<CreateTransactionResponse> {
-  const response = await apiClient.post<CreateTransactionResponse>(
-    buildApiPath('ItemTransaction/createTransaction'),
+export async function getTransactionsByUser(data: { user: string }): Promise<ItemTransaction[]> {
+  const response = await apiClient.post<ItemTransaction[]>(
+    buildApiPath('ItemTransaction/_getTransactionsByUser'),
     data
   )
   return extractData(response)
 }
 
-export async function markPickedUp(data: { transaction: string }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemTransaction/markPickedUp'), data)
-}
-
-export async function markReturned(data: { transaction: string }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemTransaction/markReturned'), data)
-}
-
-export async function confirmReturn(data: { transaction: string }): Promise<void> {
-  await apiClient.post(buildApiPath('ItemTransaction/confirmReturn'), data)
-}
-
-export async function cancelTransaction(
-  data: { transaction: string }
-): Promise<void> {
-  await apiClient.post(buildApiPath('ItemTransaction/cancelTransaction'), data)
-}
-
-export async function getTransaction(
-  data: GetTransactionRequest
-): Promise<Transaction> {
-  const response = await apiClient.post<Array<{ transactionDoc: Transaction }>>(
+export async function getTransaction(data: { transaction: string }): Promise<ItemTransaction> {
+  const response = await apiClient.post<Array<{ transactionDoc: ItemTransaction }>>(
     buildApiPath('ItemTransaction/_getTransaction'),
     data
   )
@@ -79,3 +48,22 @@ export async function getTransaction(
   return result[0].transactionDoc
 }
 
+export async function markPickedUp(data: { transaction: string }): Promise<void> {
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemTransaction/markPickedUp'), { ...data, accessToken })
+}
+
+export async function markReturned(data: { transaction: string }): Promise<void> {
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemTransaction/markReturned'), { ...data, accessToken })
+}
+
+export async function confirmReturn(data: { transaction: string }): Promise<void> {
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemTransaction/confirmReturn'), { ...data, accessToken })
+}
+
+export async function cancelTransaction(data: { transaction: string }): Promise<void> {
+  const accessToken = localStorage.getItem('accessToken')
+  await apiClient.post(buildApiPath('ItemTransaction/cancelTransaction'), { ...data, accessToken })
+}
