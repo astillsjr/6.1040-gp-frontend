@@ -35,7 +35,7 @@ export function HomeScreen({ onItemClick }: HomeScreenProps) {
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-gray-900">BorrowMIT</h1>
+            <h1 className="text-gray-900">LocalLoop</h1>
             <Badge className="bg-green-100 text-green-800 border-green-200">
               1,250 pts
             </Badge>

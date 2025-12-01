@@ -11,7 +11,7 @@
     <div class="max-w-4xl mx-auto px-4 py-6">
       <!-- Welcome Message for New Users -->
       <div v-if="isNewUser && !userProfileStore.hasProfile" class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6">
-        <h2 class="text-lg font-semibold mb-2">👋 Welcome to BorrowMIT!</h2>
+        <h2 class="text-lg font-semibold mb-2">👋 Welcome to LocalLoop!</h2>
         <p class="text-sm">Please complete your profile to start browsing and listing items.</p>
       </div>
 
@@ -218,7 +218,6 @@ async function handleUpdateProfile() {
   }
 
   successMessage.value = ''
-  const isCreatingProfile = !userProfileStore.hasProfile
 
   try {
     if (userProfileStore.hasProfile) {
@@ -253,7 +252,7 @@ async function handleUpdateProfile() {
 
       // For new users, redirect to items page after successful profile creation
       if (isNewUser.value) {
-        successMessage.value = 'Profile created successfully! Welcome to BorrowMIT!'
+        successMessage.value = 'Profile created successfully! Welcome to LocalLoop!'
         setTimeout(() => {
           router.push('/items')
         }, 1500)

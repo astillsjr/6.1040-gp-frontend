@@ -244,7 +244,6 @@ async function fetchAvailabilityWindows(itemId: string, date?: string) {
       // Filter windows for selected date - show windows that span across the selected date
       // Parse date string manually to avoid timezone issues
       const [year, month, day] = date.split('-').map(Number)
-      const selectedDate = new Date(year, month - 1, day)
       const selectedDateStart = new Date(year, month - 1, day, 0, 0, 0, 0)
       const selectedDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999)
       

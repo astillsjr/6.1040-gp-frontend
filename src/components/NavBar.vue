@@ -5,7 +5,7 @@
         to="/" 
         class="text-white hover:opacity-90 transition-opacity no-underline"
       >
-        <h1 class="text-2xl font-bold tracking-tight">BorrowMIT</h1>
+        <h1 class="text-2xl font-bold tracking-tight">LocalLoop</h1>
       </router-link>
       
       <div class="flex items-center gap-2">

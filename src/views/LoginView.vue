@@ -5,7 +5,7 @@
     
     <Card class="w-full max-w-md relative z-10 shadow-2xl">
       <CardHeader class="text-center">
-        <CardTitle class="text-3xl font-bold">Login to BorrowMIT</CardTitle>
+        <CardTitle class="text-3xl font-bold">Login to LocalLoop</CardTitle>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="handleLogin" class="space-y-6">

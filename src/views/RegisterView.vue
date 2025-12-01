@@ -5,7 +5,7 @@
     
     <Card class="w-full max-w-md relative z-10 shadow-2xl">
       <CardHeader class="text-center">
-        <CardTitle class="text-3xl font-bold">Join BorrowMIT</CardTitle>
+        <CardTitle class="text-3xl font-bold">Join LocalLoop</CardTitle>
       </CardHeader>
       <CardContent>
         <div v-if="isDev && backendStatus && !backendStatus.success" class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-md text-sm mb-4">
