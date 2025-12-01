@@ -110,9 +110,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
 import { useItemStore, type DisplayItem } from '@/stores/itemStore'
-import { Button, Input, Badge } from '@/components/ui'
+import { Button, Input } from '@/components/ui'
 import Select from '@/components/ui/Select.vue'
 import SelectItem from '@/components/ui/SelectItem.vue'
 import ItemCard from '@/components/items/ItemCard.vue'
@@ -120,7 +119,6 @@ import { Search, SlidersHorizontal } from 'lucide-vue-next'
 import { VALID_DORMS } from '@/utils/validDorms'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const itemStore = useItemStore()
 
 const searchQuery = ref('')
@@ -130,7 +128,6 @@ const showFilters = ref(false)
 
 const categories = ['All', 'Tools', 'Electronics', 'Professional Attire', 'Craft Materials', 'Photography']
 const dorms = ['All Dorms', ...VALID_DORMS]
-const quickCategories = ['All', 'Tools', 'Electronics', 'Attire', 'Craft']
 
 // Fetch items on mount
 onMounted(async () => {
@@ -174,21 +171,6 @@ const filteredItems = computed(() => {
     return matchesSearch && matchesCategory && matchesDorm
   })
 })
-
-const userPoints = computed(() => {
-  // TODO: Get from userProfileStore when implemented
-  return '1,250'
-})
-
-function handleCategoryClick(cat: string) {
-  if (cat === 'All') {
-    selectedCategory.value = 'all'
-  } else if (cat === 'Attire') {
-    selectedCategory.value = 'Professional Attire'
-  } else {
-    selectedCategory.value = cat
-  }
-}
 
 function clearFilters() {
   searchQuery.value = ''
