@@ -1,55 +1,56 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-4xl mx-auto px-4 py-4">
-        <h1 class="text-gray-900 text-2xl font-semibold">My Profile</h1>
+    <div class="bg-card/95 backdrop-blur-sm border-b border-border">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <h1 class="text-foreground text-3xl font-bold">My Profile</h1>
+        <p class="text-muted-foreground text-base mt-2">Manage your profile information and preferences</p>
       </div>
     </div>
 
     <!-- Content -->
-    <div class="max-w-4xl mx-auto px-4 py-6">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Welcome Message for New Users -->
-      <div v-if="isNewUser && !userProfileStore.hasProfile" class="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg mb-6">
-        <h2 class="text-lg font-semibold mb-2">👋 Welcome to LocalLoop!</h2>
-        <p class="text-sm">Please complete your profile to start browsing and listing items.</p>
+      <div v-if="isNewUser && !userProfileStore.hasProfile" class="bg-sky-blue-light border-2 border-sky-blue text-sky-blue p-5 rounded-2xl mb-6">
+        <h2 class="text-xl font-bold mb-2">👋 Welcome to LocalLoop!</h2>
+        <p class="text-base">Please complete your profile to start browsing and listing items.</p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="userProfileStore.isLoading" class="text-center py-12">
-        <p class="text-gray-500">Loading profile...</p>
+      <div v-if="userProfileStore.isLoading" class="text-center py-16">
+        <p class="text-muted-foreground text-lg">Loading profile...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="userProfileStore.error && !userProfileStore.hasProfile && !isNewUser" class="text-center py-12">
-        <p class="text-red-500 mb-4">{{ userProfileStore.error }}</p>
-        <Button variant="outline" @click="loadProfile">Try Again</Button>
+      <div v-else-if="userProfileStore.error && !userProfileStore.hasProfile && !isNewUser" class="text-center py-16">
+        <p class="text-destructive mb-6 text-lg">{{ userProfileStore.error }}</p>
+        <Button variant="outline" @click="loadProfile" class="rounded-xl">Try Again</Button>
       </div>
 
       <!-- Profile Content -->
       <template v-else>
         <!-- Profile Info Card -->
-        <Card class="p-6 mb-6">
-          <div class="flex items-start gap-4">
+        <Card class="p-6 mb-6 border-2">
+          <div class="flex items-start gap-5">
             <img
               :src="userAvatar"
               :alt="userProfileStore.displayName || 'User'"
-              class="w-16 h-16 rounded-full"
+              class="w-20 h-20 rounded-full border-2 border-border"
             />
             <div class="flex-1">
-              <h2 class="text-xl font-semibold text-gray-900 mb-1">
+              <h2 class="text-2xl font-bold text-foreground mb-2">
                 {{ userProfileStore.displayName || 'No display name set' }}
               </h2>
-              <p class="text-gray-600 mb-2">{{ userProfileStore.dorm || 'No dorm set' }}</p>
-              <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1">
-                  <Star class="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span class="text-sm">{{ formattedRating }} rating</span>
+              <p class="text-muted-foreground mb-3 text-base">{{ userProfileStore.dorm || 'No dorm set' }}</p>
+              <div class="flex items-center gap-4 flex-wrap">
+                <div class="flex items-center gap-1.5">
+                  <Star class="w-5 h-5 fill-recycling-green text-recycling-green" />
+                  <span class="text-sm font-medium text-foreground">{{ formattedRating }} rating</span>
                 </div>
-                <span class="text-sm text-gray-500">·</span>
-                <span class="text-sm text-gray-600">
-                  Lender: {{ userProfileStore.lenderScore.toFixed(1) }} | 
-                  Borrower: {{ userProfileStore.borrowerScore.toFixed(1) }}
+                <span class="text-sm text-muted-foreground">·</span>
+                <span class="text-sm text-muted-foreground">
+                  Lender: <span class="font-medium text-foreground">{{ userProfileStore.lenderScore.toFixed(1) }}</span> | 
+                  Borrower: <span class="font-medium text-foreground">{{ userProfileStore.borrowerScore.toFixed(1) }}</span>
                 </span>
               </div>
             </div>
@@ -57,15 +58,15 @@
         </Card>
 
         <!-- Profile Form -->
-        <Card class="p-6">
-          <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>Update your profile information</CardDescription>
+        <Card class="p-6 border-2">
+          <CardHeader class="pb-4">
+            <CardTitle class="text-2xl">Profile Information</CardTitle>
+            <CardDescription class="text-base">Update your profile information</CardDescription>
           </CardHeader>
           <CardContent>
-            <form @submit.prevent="handleUpdateProfile" class="space-y-6">
+            <form @submit.prevent="handleUpdateProfile" class="space-y-5">
               <div class="space-y-2">
-                <Label for="displayName">Display Name</Label>
+                <Label for="displayName" class="font-medium">Display Name</Label>
                 <Input
                   id="displayName"
                   v-model="formData.displayName"
@@ -73,11 +74,12 @@
                   placeholder="Your display name"
                   required
                   :disabled="userProfileStore.isLoading"
+                  class="h-12 rounded-xl border-2 focus:border-primary"
                 />
               </div>
 
               <div class="space-y-2">
-                <Label for="dorm">Dorm</Label>
+                <Label for="dorm" class="font-medium">Dorm</Label>
                 <Select
                   id="dorm"
                   :model-value="formData.dorm"
@@ -96,21 +98,22 @@
               </div>
 
               <div class="space-y-2">
-                <Label for="bio">Bio</Label>
+                <Label for="bio" class="font-medium">Bio</Label>
                 <Textarea
                   id="bio"
                   v-model="formData.bio"
                   placeholder="Tell us about yourself..."
                   rows="4"
                   :disabled="userProfileStore.isLoading"
+                  class="rounded-xl border-2 focus:border-primary"
                 />
               </div>
 
-              <div v-if="userProfileStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
+              <div v-if="userProfileStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20">
                 <strong>Error:</strong> {{ userProfileStore.error }}
-                <div v-if="userProfileStore.error.includes('504') || userProfileStore.error.includes('timeout')" class="mt-2 text-xs">
+                <div v-if="userProfileStore.error.includes('504') || userProfileStore.error.includes('timeout')" class="mt-3 text-xs">
                   <p>⚠️ Backend server is not responding. Please make sure:</p>
-                  <ul class="list-disc ml-4 mt-1">
+                  <ul class="list-disc ml-4 mt-1 space-y-1">
                     <li>Your backend server is running</li>
                     <li>The API URL is configured correctly</li>
                     <li>There are no network/CORS issues</li>
@@ -118,14 +121,14 @@
                 </div>
               </div>
 
-              <div v-if="successMessage" class="bg-green-50 text-green-800 p-3 rounded-md text-sm border border-green-200">
+              <div v-if="successMessage" class="bg-recycling-green-pale text-recycling-green-dark p-4 rounded-xl text-sm border-2 border-recycling-green-subtle">
                 {{ successMessage }}
               </div>
 
               <Button
                 type="submit"
                 :disabled="userProfileStore.isLoading || !isFormValid"
-                class="w-full"
+                class="w-full h-12 rounded-xl font-semibold shadow-sustainable hover:shadow-sustainable-lg"
                 size="lg"
               >
                 {{ userProfileStore.isLoading ? 'Saving...' : 'Save Profile' }}

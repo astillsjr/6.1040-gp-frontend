@@ -1,48 +1,48 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-8">
+  <div class="min-h-screen bg-background pb-8">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-6xl mx-auto px-4 py-4">
-        <h1 class="text-gray-900 text-2xl font-semibold">Activity</h1>
-        <p class="text-gray-600 text-sm mt-1">Manage your requests, borrows, and transfers</p>
+    <div class="bg-card/95 backdrop-blur-sm border-b border-border">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <h1 class="text-foreground text-3xl font-bold">Activity</h1>
+        <p class="text-muted-foreground text-base mt-2">Manage your requests, borrows, and transfers</p>
       </div>
     </div>
 
     <!-- Content -->
-    <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Loading State -->
-      <div v-if="isLoading" class="flex justify-center py-12">
-        <div class="text-gray-500">Loading activity...</div>
+      <div v-if="isLoading" class="flex justify-center py-16">
+        <div class="text-muted-foreground text-lg">Loading activity...</div>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 text-red-800 p-4 rounded-md">
+      <div v-else-if="error" class="bg-destructive/10 text-destructive p-5 rounded-xl border-2 border-destructive/20">
         {{ error }}
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="hasNoActivity" class="text-center py-12">
-        <div class="text-gray-400 mb-4">
-          <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-else-if="hasNoActivity" class="text-center py-16">
+        <div class="text-muted-foreground mb-6">
+          <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
           </svg>
         </div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">No Activity Yet</h3>
-        <p class="text-gray-600 mb-4">Start browsing and requesting items to get started!</p>
-        <Button @click="$router.push('/items')">Browse Items</Button>
+        <h3 class="text-2xl font-bold text-foreground mb-3">No Activity Yet</h3>
+        <p class="text-muted-foreground mb-6 text-lg">Start browsing and requesting items to get started!</p>
+        <Button @click="$router.push('/items')" class="rounded-xl">Browse Items</Button>
       </div>
 
       <!-- Activity Sections -->
       <div v-else class="space-y-8">
         <!-- ACTION REQUIRED -->
-        <section v-if="actionRequired.length > 0" class="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
-          <h2 class="text-xl font-semibold text-amber-900 mb-4 flex items-center gap-2">
-            <span class="bg-amber-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
+        <section v-if="actionRequired.length > 0" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
+          <h2 class="text-2xl font-bold text-amber-900 mb-5 flex items-center gap-3">
+            <span class="bg-amber-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
               {{ actionRequired.length }}
             </span>
             Action Required
           </h2>
-          <div class="space-y-3">
+          <div class="space-y-4">
             <ActivityCard
               v-for="item in actionRequired"
               :key="item.id"
@@ -54,10 +54,10 @@
 
         <!-- WAITING FOR RESPONSE -->
         <section v-if="waiting.length > 0">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">
+          <h2 class="text-xl font-bold text-foreground mb-5">
             Waiting for Response ({{ waiting.length }})
           </h2>
-          <div class="space-y-3">
+          <div class="space-y-4">
             <ActivityCard
               v-for="item in waiting"
               :key="item.id"
@@ -69,10 +69,10 @@
 
         <!-- ACTIVE (IN PROGRESS) -->
         <section v-if="active.length > 0">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">
+          <h2 class="text-xl font-bold text-foreground mb-5">
             Active ({{ active.length }})
           </h2>
-          <div class="space-y-3">
+          <div class="space-y-4">
             <ActivityCard
               v-for="item in active"
               :key="item.id"
@@ -86,14 +86,14 @@
         <section v-if="recent.length > 0">
           <details class="group">
             <summary class="cursor-pointer list-none">
-              <h2 class="text-lg font-semibold text-gray-700 mb-4 inline-flex items-center gap-2">
+              <h2 class="text-xl font-bold text-muted-foreground mb-5 inline-flex items-center gap-2 hover:text-foreground transition-colors">
                 Recent ({{ recent.length }})
-                <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </h2>
             </summary>
-            <div class="space-y-3 opacity-75">
+            <div class="space-y-4 opacity-75">
               <ActivityCard
                 v-for="item in recent"
                 :key="item.id"

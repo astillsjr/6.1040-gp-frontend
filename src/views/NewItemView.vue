@@ -1,9 +1,10 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-4xl mx-auto px-4 py-4">
-        <h1 class="text-gray-900 text-2xl font-semibold">List a New Item</h1>
+    <div class="bg-card/95 backdrop-blur-sm border-b border-border">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <h1 class="text-foreground text-3xl font-bold">List a New Item</h1>
+        <p class="text-muted-foreground text-base mt-2">Fill in the details about the item you want to share</p>
       </div>
     </div>
 

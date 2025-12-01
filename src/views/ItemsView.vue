@@ -1,23 +1,22 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-6xl mx-auto px-4 py-4">
-        <div class="flex items-center justify-end mb-4">
-          <Badge v-if="authStore.isAuthenticated" class="bg-green-100 text-green-800 border-green-200">
-            {{ userPoints }} pts
-          </Badge>
+    <div class="bg-card/95 backdrop-blur-sm border-b border-border">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="mb-4">
+          <h1 class="text-foreground text-3xl font-bold">Browse Items</h1>
+          <p class="text-muted-foreground text-base mt-2">Search and filter items available in the MIT community</p>
         </div>
 
         <!-- Search Bar -->
-        <div class="relative mb-3">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div class="relative mb-4">
+          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search for items..."
             :model-value="searchQuery"
             @update:model-value="searchQuery = String($event)"
-            class="pl-10 pr-4"
+            class="pl-11 pr-4 h-12 text-base rounded-xl border-2 focus:border-primary"
           />
         </div>
 
@@ -26,16 +25,16 @@
           variant="outline"
           size="sm"
           @click="showFilters = !showFilters"
-          class="w-full mb-3 bg-gray-900 text-white border-gray-900 hover:bg-gray-800"
+          class="w-full mb-4 bg-primary text-primary-foreground border-primary hover:bg-recycling-green-dark h-10 rounded-xl font-medium"
         >
           <SlidersHorizontal class="w-4 h-4 mr-2" />
           Filters
         </Button>
 
         <!-- Filters -->
-        <div v-if="showFilters" class="grid grid-cols-2 gap-3 mb-3">
+        <div v-if="showFilters" class="grid grid-cols-2 gap-4 mb-4 p-4 bg-muted/50 rounded-xl">
           <div>
-            <label class="text-sm text-gray-600 mb-1 block">Category</label>
+            <label class="text-sm font-medium text-foreground mb-2 block">Category</label>
             <Select :model-value="selectedCategory" @update:model-value="selectedCategory = $event">
               <SelectItem value="all" label="All Categories" />
               <SelectItem
@@ -47,7 +46,7 @@
             </Select>
           </div>
           <div>
-            <label class="text-sm text-gray-600 mb-1 block">Dorm</label>
+            <label class="text-sm font-medium text-foreground mb-2 block">Dorm</label>
             <Select :model-value="selectedDorm" @update:model-value="selectedDorm = $event">
               <SelectItem value="all" label="All Dorms" />
               <SelectItem
@@ -59,45 +58,32 @@
             </Select>
           </div>
         </div>
-
-        <!-- Quick Categories -->
-        <div class="flex gap-2 overflow-x-auto pb-1">
-          <Badge
-            v-for="cat in quickCategories"
-            :key="cat"
-            variant="outline"
-            class="cursor-pointer whitespace-nowrap bg-gray-900 text-white border-gray-900 hover:bg-gray-800"
-            @click="handleCategoryClick(cat)"
-          >
-            {{ cat }}
-          </Badge>
-        </div>
       </div>
     </div>
 
     <!-- Content -->
-    <div class="max-w-6xl mx-auto px-4 py-6">
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-600">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <p class="text-base text-muted-foreground font-medium">
           {{ filteredItems.length }} items available
         </p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="itemStore.isLoading" class="text-center py-12">
-        <p class="text-gray-500">Loading items...</p>
+      <div v-if="itemStore.isLoading" class="text-center py-16">
+        <p class="text-muted-foreground text-lg">Loading items...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="itemStore.error" class="text-center py-12">
-        <p class="text-red-500 mb-4">{{ itemStore.error }}</p>
-        <Button variant="outline" @click="itemStore.fetchItems()">
+      <div v-else-if="itemStore.error" class="text-center py-16">
+        <p class="text-destructive mb-6 text-lg">{{ itemStore.error }}</p>
+        <Button variant="outline" @click="itemStore.fetchItems()" class="rounded-xl">
           Try Again
         </Button>
       </div>
 
       <!-- Items Grid -->
-      <div v-else-if="filteredItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-else-if="filteredItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <ItemCard
           v-for="item in filteredItems"
           :key="item.id"
@@ -107,12 +93,12 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="text-center py-12">
-        <p class="text-gray-500">No items found matching your search.</p>
+      <div v-else class="text-center py-16">
+        <p class="text-muted-foreground text-lg mb-6">No items found matching your search.</p>
         <Button
           variant="outline"
           @click="clearFilters"
-          class="mt-4"
+          class="mt-4 rounded-xl"
         >
           Clear Filters
         </Button>

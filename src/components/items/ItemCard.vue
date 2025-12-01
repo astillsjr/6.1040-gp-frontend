@@ -1,36 +1,36 @@
 <template>
   <div
     @click="$emit('click')"
-    class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
+    class="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-sustainable-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/30 group"
   >
-    <div class="aspect-[4/3] relative overflow-hidden bg-gray-100">
+    <div class="aspect-[4/3] relative overflow-hidden bg-muted">
       <ImageWithFallback
         :src="item.image"
         :alt="item.name"
-        class="w-full h-full object-cover"
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
     </div>
-    <div class="p-4">
-      <div class="flex items-start justify-between gap-2 mb-2">
-        <h3 class="flex-1">{{ item.name }}</h3>
-        <Badge variant="outline" class="text-xs text-gray-700 border-gray-300 bg-transparent">
+    <div class="p-5">
+      <div class="flex items-start justify-between gap-2 mb-3">
+        <h3 class="flex-1 font-semibold text-foreground text-base leading-tight">{{ item.name }}</h3>
+        <Badge variant="outline" class="text-xs text-muted-foreground border-border bg-muted/50 shrink-0">
           {{ item.condition }}
         </Badge>
       </div>
-      <div class="flex items-center gap-1 text-sm text-gray-600 mb-2">
-        <MapPin class="w-4 h-4" />
+      <div class="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+        <MapPin class="w-4 h-4 text-primary" />
         <span>{{ item.dorm }}</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2.5 pt-3 border-t border-border">
         <img
           :src="item.owner.avatar"
           :alt="item.owner.name"
-          class="w-6 h-6 rounded-full"
+          class="w-7 h-7 rounded-full border-2 border-border"
         />
-        <span class="text-sm text-gray-600">{{ item.owner.name }}</span>
-        <div class="flex items-center gap-1 ml-auto">
-          <Star class="w-4 h-4 fill-yellow-400 text-yellow-400" />
-          <span class="text-sm">{{ item.owner.rating }}</span>
+        <span class="text-sm text-foreground font-medium flex-1">{{ item.owner.name }}</span>
+        <div class="flex items-center gap-1">
+          <Star class="w-4 h-4 fill-recycling-green text-recycling-green" />
+          <span class="text-sm font-medium text-foreground">{{ item.owner.rating }}</span>
         </div>
       </div>
     </div>

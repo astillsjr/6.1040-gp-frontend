@@ -13,11 +13,18 @@ export default {
         'mit-red-dark': '#8A1538',
         'mit-red-light': '#C1272D',
         'mit-silver': '#8A8B8C',
-        // Recycling Green
+        // Enhanced Sustainable Green Palette
         'recycling-green': '#2E7D32',
         'recycling-green-dark': '#1B5E20',
         'recycling-green-light': '#4CAF50',
         'recycling-green-lighter': '#81C784',
+        'recycling-green-pale': '#E8F5E9',
+        'recycling-green-subtle': '#C8E6C9',
+        // Earth Tones
+        'earth-brown': '#6D4C41',
+        'earth-tan': '#D7CCC8',
+        'sky-blue': '#64B5F6',
+        'sky-blue-light': '#E3F2FD',
         // Design system colors (from mock)
         background: 'var(--background)',
         foreground: 'var(--foreground)',

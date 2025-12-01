@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-background">
     <!-- Header -->
-    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-      <div class="max-w-4xl mx-auto px-4 py-4">
-        <Button variant="ghost" @click="handleBack" class="mb-2">
+    <div class="bg-card/95 backdrop-blur-sm border-b border-border sticky top-[72px] z-10">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <Button variant="ghost" @click="handleBack" class="mb-2 rounded-xl">
           <ArrowLeft class="w-4 h-4 mr-2" />
           Back
         </Button>
@@ -23,9 +23,9 @@
 
     <!-- Content -->
     <template v-else>
-      <div class="max-w-4xl mx-auto px-4 py-6 pb-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">
         <!-- Item Image -->
-        <div class="aspect-[16/10] w-full rounded-lg overflow-hidden bg-gray-100 mb-6">
+        <div class="aspect-[16/10] w-full rounded-2xl overflow-hidden bg-muted mb-8 shadow-sustainable">
           <ImageWithFallback
             :src="itemStore.currentItem.image"
             :alt="itemStore.currentItem.name"
@@ -34,55 +34,57 @@
         </div>
 
         <!-- Item Info -->
-        <div class="mb-6">
-          <div class="flex items-start justify-between gap-4 mb-3">
-            <h1 class="text-gray-900 text-2xl font-semibold">{{ itemStore.currentItem.name }}</h1>
-            <Badge variant="outline" class="text-gray-700 border-gray-300 bg-transparent">{{ itemStore.currentItem.condition }}</Badge>
+        <div class="mb-8">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <h1 class="text-foreground text-3xl sm:text-4xl font-bold leading-tight">{{ itemStore.currentItem.name }}</h1>
+            <Badge variant="outline" class="text-muted-foreground border-border bg-muted/50 shrink-0">{{ itemStore.currentItem.condition }}</Badge>
           </div>
 
-          <div class="flex items-center gap-4 mb-4 flex-wrap">
-            <Badge variant="secondary">{{ itemStore.currentItem.category }}</Badge>
+          <div class="flex items-center gap-3 mb-6 flex-wrap">
+            <Badge variant="secondary" class="bg-recycling-green-pale text-recycling-green-dark border-recycling-green-subtle">{{ itemStore.currentItem.category }}</Badge>
             <Badge
               v-for="tag in itemStore.currentItem.tags.slice(0, 2)"
               :key="tag"
               variant="outline"
-              class="text-xs"
+              class="text-xs border-border"
             >
               {{ tag }}
             </Badge>
           </div>
 
-          <p class="text-gray-600 mb-4">{{ itemStore.currentItem.description }}</p>
+          <p class="text-muted-foreground mb-6 text-lg leading-relaxed">{{ itemStore.currentItem.description }}</p>
 
           <!-- Location -->
-          <Card class="p-4 mb-4">
-            <div class="flex items-start gap-3">
-              <MapPin class="w-5 h-5 text-gray-500 mt-0.5" />
+          <Card class="p-5 mb-5 border-2">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-xl bg-recycling-green-pale flex items-center justify-center shrink-0">
+                <MapPin class="w-5 h-5 text-recycling-green" />
+              </div>
               <div>
-                <p class="text-sm text-gray-600">Pickup Location</p>
-                <p class="font-medium">{{ itemStore.currentItem.pickupLocation }}</p>
-                <p class="text-sm text-gray-500">{{ itemStore.currentItem.dorm }}</p>
+                <p class="text-sm text-muted-foreground font-medium mb-1">Pickup Location</p>
+                <p class="font-semibold text-foreground text-lg">{{ itemStore.currentItem.pickupLocation }}</p>
+                <p class="text-sm text-muted-foreground mt-1">{{ itemStore.currentItem.dorm }}</p>
               </div>
             </div>
           </Card>
 
           <!-- Owner Info -->
-          <Card class="p-4">
-            <div class="flex items-center gap-3">
+          <Card class="p-5 border-2">
+            <div class="flex items-center gap-4">
               <img
                 :src="itemStore.currentItem.owner.avatar"
                 :alt="itemStore.currentItem.owner.name"
-                class="w-12 h-12 rounded-full"
+                class="w-14 h-14 rounded-full border-2 border-border"
               />
               <div class="flex-1">
-                <p class="font-medium">{{ itemStore.currentItem.owner.name }}</p>
-                <div class="flex items-center gap-2">
+                <p class="font-semibold text-foreground text-lg">{{ itemStore.currentItem.owner.name }}</p>
+                <div class="flex items-center gap-2 mt-1">
                   <div class="flex items-center gap-1">
-                    <Star class="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span class="text-sm">{{ itemStore.currentItem.owner.rating }}</span>
+                    <Star class="w-4 h-4 fill-recycling-green text-recycling-green" />
+                    <span class="text-sm font-medium text-foreground">{{ itemStore.currentItem.owner.rating }}</span>
                   </div>
-                  <span class="text-sm text-gray-500">·</span>
-                  <span class="text-sm text-gray-500">{{ itemStore.currentItem.dorm }}</span>
+                  <span class="text-sm text-muted-foreground">·</span>
+                  <span class="text-sm text-muted-foreground">{{ itemStore.currentItem.dorm }}</span>
                 </div>
               </div>
             </div>
@@ -90,36 +92,38 @@
         </div>
 
         <!-- Availability Section -->
-        <div class="mb-6">
-          <h2 class="mb-3 flex items-center gap-2 text-lg font-semibold">
-            <CalendarIcon class="w-5 h-5" />
+        <div class="mb-8">
+          <h2 class="mb-4 flex items-center gap-3 text-2xl font-bold text-foreground">
+            <div class="w-10 h-10 rounded-xl bg-recycling-green-pale flex items-center justify-center">
+              <CalendarIcon class="w-5 h-5 text-recycling-green" />
+            </div>
             Check Availability
           </h2>
 
-          <Card class="p-4 mb-4">
-            <div class="mb-4">
-              <label class="text-sm text-gray-600 mb-2 block">Select Date</label>
+          <Card class="p-5 mb-5 border-2">
+            <div>
+              <label class="text-sm font-medium text-foreground mb-3 block">Select Date</label>
               <input
                 v-model="selectedDate"
                 type="date"
                 :min="minDate"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                class="w-full px-4 py-3 border-2 border-border rounded-xl focus:outline-none focus:border-primary text-base"
               />
             </div>
           </Card>
 
           <div v-if="selectedDate && availableTimeSlots.length > 0">
-            <p class="text-sm text-gray-600 mb-3 flex items-center gap-2">
-              <Clock class="w-4 h-4" />
+            <p class="text-sm text-muted-foreground mb-4 flex items-center gap-2 font-medium">
+              <Clock class="w-4 h-4 text-primary" />
               Available pickup times for {{ formatDate(selectedDate) }}
             </p>
-            <div class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+            <div class="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
               <Button
                 v-for="(slot, idx) in availableTimeSlots"
                 :key="idx"
                 variant="outline"
-                class="justify-start text-sm"
-                :class="{ 'bg-gray-900 text-white': selectedTimeSlot === idx }"
+                class="justify-start text-sm h-12 rounded-xl border-2"
+                :class="{ 'bg-primary text-primary-foreground border-primary': selectedTimeSlot === idx, 'hover:border-primary/50': selectedTimeSlot !== idx }"
                 @click="selectedTimeSlot = idx"
               >
                 {{ slot.label }}
@@ -127,22 +131,22 @@
             </div>
           </div>
 
-          <div v-else-if="selectedDate && availableTimeSlots.length === 0" class="text-sm text-gray-500">
+          <div v-else-if="selectedDate && availableTimeSlots.length === 0" class="text-sm text-muted-foreground p-4 bg-muted/50 rounded-xl">
             No available time slots for this date.
           </div>
         </div>
 
         <!-- Request Notes -->
-        <div class="mb-6">
-          <h2 class="mb-3 text-lg font-semibold">Add a Note (Optional)</h2>
-          <Card class="p-4">
+        <div class="mb-8">
+          <h2 class="mb-4 text-2xl font-bold text-foreground">Add a Note (Optional)</h2>
+          <Card class="p-5 border-2">
             <Textarea
               v-model="requestNotes"
               placeholder="e.g., 'I need this for a class project due Friday' or 'Can we meet at the Student Center?'"
-              rows="3"
-              class="w-full"
+              rows="4"
+              class="w-full rounded-xl border-2 focus:border-primary text-base"
             />
-            <p class="text-sm text-muted-foreground mt-2">
+            <p class="text-sm text-muted-foreground mt-3">
               Help coordinate pickup details or explain why you need this item
             </p>
           </Card>
@@ -150,10 +154,10 @@
       </div>
 
       <!-- Fixed Bottom Bar -->
-      <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+      <div class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border p-4 shadow-sustainable-lg">
         <div class="max-w-4xl mx-auto">
           <Button
-            class="w-full bg-gray-900 text-white hover:bg-gray-800"
+            class="w-full bg-primary text-primary-foreground hover:bg-recycling-green-dark h-14 rounded-xl font-semibold text-base shadow-sustainable hover:shadow-sustainable-lg"
             size="lg"
             :disabled="!canRequest"
             @click="handleRequestBorrow"

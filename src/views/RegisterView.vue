@@ -1,20 +1,24 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#A31F34] to-[#8A1538] p-4 relative overflow-hidden">
+  <div class="min-h-screen flex items-center justify-center bg-sustainable-gradient p-4 relative overflow-hidden">
     <!-- Background decoration -->
-    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient from-green-500/10 to-transparent pointer-events-none" />
+    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient pointer-events-none" />
     
-    <Card class="w-full max-w-md relative z-10 shadow-2xl">
-      <CardHeader class="text-center">
-        <CardTitle class="text-3xl font-bold">Join LocalLoop</CardTitle>
+    <Card class="w-full max-w-md relative z-10 shadow-sustainable-lg border-2">
+      <CardHeader class="text-center pb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-recycling-green-pale mb-4 mx-auto">
+          <span class="text-3xl">🌱</span>
+        </div>
+        <CardTitle class="text-3xl font-bold text-foreground">Join LocalLoop</CardTitle>
+        <p class="text-muted-foreground mt-2">Start sharing sustainably with the MIT community</p>
       </CardHeader>
       <CardContent>
-        <div v-if="isDev && backendStatus && !backendStatus.success" class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-md text-sm mb-4">
+        <div v-if="isDev && backendStatus && !backendStatus.success" class="bg-amber-50 border-2 border-amber-200 text-amber-800 p-4 rounded-xl text-sm mb-5">
           ⚠️ Cannot connect to backend API. Please check your configuration.
           <br><small class="opacity-80">API URL: {{ apiBaseUrl }}</small>
         </div>
-        <form @submit.prevent="handleRegister" class="space-y-6">
+        <form @submit.prevent="handleRegister" class="space-y-5">
           <div class="space-y-2">
-            <Label for="username">Username</Label>
+            <Label for="username" class="text-foreground font-medium">Username</Label>
             <Input
               id="username"
               v-model="username"
@@ -22,10 +26,11 @@
               required
               placeholder="Choose a username"
               :disabled="authStore.isLoading"
+              class="h-12 rounded-xl border-2 focus:border-primary"
             />
           </div>
           <div class="space-y-2">
-            <Label for="email">Email</Label>
+            <Label for="email" class="text-foreground font-medium">Email</Label>
             <Input
               id="email"
               v-model="email"
@@ -33,10 +38,11 @@
               required
               placeholder="your.email@mit.edu"
               :disabled="authStore.isLoading"
+              class="h-12 rounded-xl border-2 focus:border-primary"
             />
           </div>
           <div class="space-y-2">
-            <Label for="password">Password</Label>
+            <Label for="password" class="text-foreground font-medium">Password</Label>
             <Input
               id="password"
               v-model="password"
@@ -45,10 +51,11 @@
               placeholder="Choose a password (min. 8 characters)"
               minlength="8"
               :disabled="authStore.isLoading"
+              class="h-12 rounded-xl border-2 focus:border-primary"
             />
           </div>
           <div class="space-y-2">
-            <Label for="confirmPassword">Confirm Password</Label>
+            <Label for="confirmPassword" class="text-foreground font-medium">Confirm Password</Label>
             <Input
               id="confirmPassword"
               v-model="confirmPassword"
@@ -56,27 +63,27 @@
               required
               placeholder="Confirm your password"
               :disabled="authStore.isLoading"
-              :class="{ 'border-destructive': confirmPassword && !passwordsMatch }"
+              :class="['h-12 rounded-xl border-2 focus:border-primary', { 'border-destructive': confirmPassword && !passwordsMatch }]"
             />
-            <p v-if="confirmPassword && !passwordsMatch" class="text-sm text-destructive">
+            <p v-if="confirmPassword && !passwordsMatch" class="text-sm text-destructive font-medium">
               Passwords do not match
             </p>
           </div>
-          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20 whitespace-pre-line">
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20 whitespace-pre-line">
             <strong>Registration Error:</strong><br>
             {{ authStore.error }}
           </div>
           <Button
             type="submit"
             :disabled="authStore.isLoading || !passwordsMatch || password.length < 8"
-            class="w-full"
+            class="w-full h-12 rounded-xl font-semibold shadow-sustainable hover:shadow-sustainable-lg"
             size="lg"
           >
             {{ authStore.isLoading ? 'Creating account...' : 'Register' }}
           </Button>
           <p class="text-center text-sm text-muted-foreground">
             Already have an account?
-            <router-link to="/login" class="text-primary font-semibold hover:underline">
+            <router-link to="/login" class="text-primary font-semibold hover:underline ml-1">
               Login here
             </router-link>
           </p>

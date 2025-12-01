@@ -1,21 +1,25 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#A31F34] to-[#8A1538] p-4 relative overflow-hidden">
+  <div class="min-h-screen flex items-center justify-center bg-sustainable-gradient p-4 relative overflow-hidden">
     <!-- Background decoration -->
-    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient from-green-500/10 to-transparent pointer-events-none" />
+    <div class="absolute top-0 right-0 w-[200%] h-[200%] bg-radial-gradient pointer-events-none" />
     
-    <Card class="w-full max-w-md relative z-10 shadow-2xl">
-      <CardHeader class="text-center">
-        <CardTitle class="text-3xl font-bold">Login to LocalLoop</CardTitle>
+    <Card class="w-full max-w-md relative z-10 shadow-sustainable-lg border-2">
+      <CardHeader class="text-center pb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-recycling-green-pale mb-4 mx-auto">
+          <span class="text-3xl">🌱</span>
+        </div>
+        <CardTitle class="text-3xl font-bold text-foreground">Login to LocalLoop</CardTitle>
+        <p class="text-muted-foreground mt-2">Welcome back to MIT's sustainable sharing platform</p>
       </CardHeader>
       <CardContent>
-        <form @submit.prevent="handleLogin" class="space-y-6">
+        <form @submit.prevent="handleLogin" class="space-y-5">
           <!-- Session expired notification -->
-          <div v-if="route.query.expired === 'true'" class="bg-amber-50 text-amber-800 p-3 rounded-md text-sm border border-amber-200">
+          <div v-if="route.query.expired === 'true'" class="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm border-2 border-amber-200">
             ⏱️ Your session has expired. Please log in again to continue.
           </div>
           
           <div class="space-y-2">
-            <Label for="username">Username</Label>
+            <Label for="username" class="text-foreground font-medium">Username</Label>
             <Input
               id="username"
               v-model="username"
@@ -23,10 +27,11 @@
               required
               placeholder="Enter your username"
               :disabled="authStore.isLoading"
+              class="h-12 rounded-xl border-2 focus:border-primary"
             />
           </div>
           <div class="space-y-2">
-            <Label for="password">Password</Label>
+            <Label for="password" class="text-foreground font-medium">Password</Label>
             <Input
               id="password"
               v-model="password"
@@ -34,22 +39,23 @@
               required
               placeholder="Enter your password"
               :disabled="authStore.isLoading"
+              class="h-12 rounded-xl border-2 focus:border-primary"
             />
           </div>
-          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20">
             {{ authStore.error }}
           </div>
           <Button
             type="submit"
             :disabled="authStore.isLoading"
-            class="w-full"
+            class="w-full h-12 rounded-xl font-semibold shadow-sustainable hover:shadow-sustainable-lg"
             size="lg"
           >
             {{ authStore.isLoading ? 'Logging in...' : 'Login' }}
           </Button>
           <p class="text-center text-sm text-muted-foreground">
             Don't have an account?
-            <router-link to="/register" class="text-primary font-semibold hover:underline">
+            <router-link to="/register" class="text-primary font-semibold hover:underline ml-1">
               Register here
             </router-link>
           </p>
