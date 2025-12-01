@@ -110,7 +110,7 @@
             <p class="text-base text-muted-foreground font-medium">Active Users</p>
           </div>
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">1,000+</div>
+            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">TBD</div>
             <p class="text-base text-muted-foreground font-medium">Successful Borrows</p>
           </div>
         </div>
