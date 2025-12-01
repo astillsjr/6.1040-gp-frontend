@@ -184,3 +184,26 @@ export async function getListings(
   return extractData(response)
 }
 
+export interface GetListingCountResponse {
+  count: number
+}
+
+export async function getAvailableListingCount(): Promise<number> {
+  try {
+    console.log('📦 Fetching available listings count...')
+    // Get all listings with status AVAILABLE
+    const listings = await getListings({ status: 'AVAILABLE' })
+    console.log('✅ Available listings count received:', listings.length)
+    return listings.length
+  } catch (error: any) {
+    console.error('❌ Error fetching listing count:', error)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      code: error.code,
+    })
+    return 0
+  }
+}
+

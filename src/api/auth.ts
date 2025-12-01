@@ -50,6 +50,10 @@ export interface GetUserFromTokenResponse {
   user: string
 }
 
+export interface GetUserCountResponse {
+  userCount: number
+}
+
 export async function register(data: RegisterRequest): Promise<RegisterResponse> {
   const response = await apiClient.post<RegisterResponse>(
     buildApiPath('UserAuthentication/register'),
@@ -97,5 +101,44 @@ export async function getUserFromToken(
   )
   const result = extractData(response)
   return result[0]
+}
+
+export async function getUserCount(): Promise<number> {
+  try {
+    console.log('🌐 Calling getUserCount endpoint...')
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout after 8 seconds')), 8000)
+    })
+    
+    // Race between the API call and timeout
+    const apiCall = apiClient.post<GetUserCountResponse[]>(
+      buildApiPath('UserAuthentication/_getUserCount'),
+      {},
+      { timeout: 10000 }
+    )
+    
+    const response = await Promise.race([apiCall, timeoutPromise])
+    const result = extractData(response)
+    console.log('✅ User count response:', result)
+    
+    if (Array.isArray(result) && result.length > 0 && result[0]?.userCount !== undefined) {
+      return result[0].userCount
+    }
+    
+    console.warn('⚠️ Unexpected user count response format:', result)
+    return 0
+  } catch (error: any) {
+    console.error('❌ Error fetching user count:', error)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      code: error.code,
+    })
+    // Return 0 on error instead of throwing, so the page still loads
+    return 0
+  }
 }
 
