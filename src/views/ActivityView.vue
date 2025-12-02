@@ -82,6 +82,21 @@
           </div>
         </section>
 
+        <!-- YOUR LISTINGS -->
+        <section v-if="yourListings.length > 0">
+          <h2 class="text-xl font-bold text-foreground mb-5">
+            Your Listings ({{ yourListings.length }})
+          </h2>
+          <div class="space-y-4">
+            <ActivityCard
+              v-for="item in yourListings"
+              :key="item.id"
+              :item="item"
+              @action="handleAction"
+            />
+          </div>
+        </section>
+
         <!-- RECENT (Completed/Cancelled) -->
         <section v-if="recent.length > 0">
           <details class="group">
@@ -116,6 +131,8 @@ import { useTransactionStore } from '@/stores/transactionStore'
 import { Button } from '@/components/ui'
 import { useRouter } from 'vue-router'
 import ActivityCard from '@/components/ActivityCard.vue'
+import * as itemsAPI from '@/api/items'
+import * as itemListingAPI from '@/api/itemListing'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -125,9 +142,22 @@ const transactionStore = useTransactionStore()
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
+// User's own listings
+interface UserListing {
+  itemId: string
+  title: string
+  description: string
+  category: string
+  condition: string
+  listingType: 'BORROW' | 'TRANSFER'
+  listingStatus: 'AVAILABLE' | 'PENDING' | 'CLAIMED' | 'EXPIRED'
+  createdAt: Date
+}
+const userListings = ref<UserListing[]>([])
+
 interface ActivityItem {
   id: string
-  type: 'incoming-request' | 'outgoing-request' | 'transaction'
+  type: 'incoming-request' | 'outgoing-request' | 'transaction' | 'listing'
   title: string
   subtitle: string
   status: string
@@ -364,10 +394,43 @@ const recent = computed(() => {
   return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10) // Show last 10
 })
 
+// Your Listings section
+const yourListings = computed(() => {
+  return userListings.value.map((listing) => ({
+    id: `listing-${listing.itemId}`,
+    type: 'listing' as const,
+    title: listing.title,
+    subtitle: listing.listingType === 'TRANSFER' ? '🎁 Permanent Transfer' : '🔄 Available to Borrow',
+    status: listing.listingStatus,
+    statusBadge: getListingStatusBadge(listing.listingStatus),
+    date: new Date(listing.createdAt),
+    timeInfo: `${listing.category} • ${listing.condition}`,
+    notes: listing.description.length > 100 ? listing.description.substring(0, 100) + '...' : listing.description,
+    actions: [
+      { label: 'View Listing', variant: 'outline' as const, handler: () => router.push(`/items/${listing.itemId}`) },
+    ],
+    rawData: listing,
+  }))
+})
+
+function getListingStatusBadge(status: string): { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
+  switch (status) {
+    case 'AVAILABLE':
+      return { text: 'AVAILABLE', variant: 'secondary' }
+    case 'PENDING':
+      return { text: 'PENDING', variant: 'default' }
+    case 'CLAIMED':
+      return { text: 'CLAIMED', variant: 'outline' }
+    default:
+      return { text: status, variant: 'outline' }
+  }
+}
+
 const hasNoActivity = computed(() => 
   actionRequired.value.length === 0 &&
   waiting.value.length === 0 &&
   active.value.length === 0 &&
+  yourListings.value.length === 0 &&
   recent.value.length === 0
 )
 
@@ -385,6 +448,7 @@ onMounted(async () => {
       requestStore.fetchIncomingRequests(authStore.userId),
       requestStore.fetchOutgoingRequests(authStore.userId),
       transactionStore.fetchTransactions(authStore.userId),
+      fetchUserListings(),
     ])
   } catch (err: any) {
     error.value = err.message || 'Failed to load activity'
@@ -392,6 +456,44 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+async function fetchUserListings() {
+  if (!authStore.userId) return
+
+  try {
+    // Get items owned by the user
+    const response = await itemsAPI.getItemsByOwner({ owner: authStore.userId })
+    const items = response.items || []
+
+    // Get listings for each item
+    const listingsWithDetails: UserListing[] = []
+    
+    for (const item of items) {
+      try {
+        const listing = await itemListingAPI.getListingByItem({ item: item._id })
+        if (listing) {
+          listingsWithDetails.push({
+            itemId: item._id,
+            title: item.title,
+            description: item.description,
+            category: item.category,
+            condition: item.condition,
+            listingType: listing.type, // Use 'type' from backend
+            listingStatus: listing.status,
+            createdAt: new Date(), // Listing doesn't have timestamp, use now
+          })
+        }
+      } catch (err) {
+        // Item might not have a listing yet
+        console.log(`No listing for item ${item._id}`)
+      }
+    }
+
+    userListings.value = listingsWithDetails
+  } catch (err) {
+    console.error('Error fetching user listings:', err)
+  }
+}
 
 function formatDateTime(date: Date | string): string {
   const d = new Date(date)

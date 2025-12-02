@@ -159,12 +159,14 @@
               </p>
             </div>
 
-            <!-- Availability Windows (for BORROW only) -->
-            <div v-if="formData.listingType === 'BORROW'" class="space-y-4 p-4 border rounded-lg bg-blue-50/50">
+            <!-- Availability Windows (for both BORROW and TRANSFER) -->
+            <div class="space-y-4 p-4 border rounded-lg" :class="formData.listingType === 'BORROW' ? 'bg-blue-50/50' : 'bg-amber-50/50'">
               <div class="space-y-2">
-                <Label class="text-base font-semibold">Availability Windows *</Label>
+                <Label class="text-base font-semibold">Pickup Availability *</Label>
                 <p class="text-sm text-muted-foreground">
-                  When is this item available for pickup and return? Add one or more time windows.
+                  {{ formData.listingType === 'BORROW' 
+                    ? 'When is this item available for pickup and return? Add one or more time windows.'
+                    : 'When are you available to hand off this item? Add one or more time windows.' }}
                 </p>
               </div>
 
@@ -245,7 +247,7 @@
             <!-- Transfer Notice -->
             <div v-if="formData.listingType === 'TRANSFER'" class="p-4 border rounded-lg bg-amber-50">
               <p class="text-sm text-amber-800">
-                <strong>Note:</strong> Transfer items will be given permanently to the recipient. You can coordinate pickup details with them after they request the item.
+                <strong>Note:</strong> Transfer items will be given permanently to the recipient. The availability windows above indicate when you can hand off the item.
               </p>
             </div>
 
@@ -277,8 +279,8 @@
                 {{ itemStore.isLoading ? 'Creating...' : 'List Item' }}
               </Button>
             </div>
-            <p v-if="formData.listingType === 'BORROW' && !isFormValid" class="text-sm text-amber-600 text-right">
-              * Please add at least one availability window for borrowable items
+            <p v-if="!isFormValid" class="text-sm text-amber-600 text-right">
+              * Please fill all required fields and add at least one pickup availability window
             </p>
           </form>
         </CardContent>
@@ -334,15 +336,11 @@ const isFormValid = computed(() => {
     formData.value.listingType !== '' &&
     formData.value.dormVisibility !== ''
 
-  // For BORROW items, require at least one valid availability window
-  if (formData.value.listingType === 'BORROW') {
-    const hasValidWindow = availabilityWindows.value.some(w => 
-      w.startDate && w.startTime && w.endDate && w.endTime
-    )
-    return basicValid && hasValidWindow
-  }
-
-  return basicValid
+  // Require at least one valid availability window for all listing types
+  const hasValidWindow = availabilityWindows.value.some(w => 
+    w.startDate && w.startTime && w.endDate && w.endTime
+  )
+  return basicValid && hasValidWindow
 })
 
 function addPhotoField() {
@@ -425,33 +423,31 @@ async function handleSubmit() {
       }
     }
 
-    // Step 4: Add availability windows for BORROW items
-    if (formData.value.listingType === 'BORROW') {
-      const validWindows = availabilityWindows.value.filter(w =>
-        w.startDate && w.startTime && w.endDate && w.endTime
-      )
+    // Step 4: Add availability windows (for both BORROW and TRANSFER items)
+    const validWindows = availabilityWindows.value.filter(w =>
+      w.startDate && w.startTime && w.endDate && w.endTime
+    )
 
-      for (const window of validWindows) {
-        try {
-          // Combine date and time into Date objects in local timezone
-          // Parse manually to ensure we're working with local time, not UTC
-          const [startYear, startMonth, startDay] = window.startDate.split('-').map(Number)
-          const [startHour, startMinute] = window.startTime.split(':').map(Number)
-          const [endYear, endMonth, endDay] = window.endDate.split('-').map(Number)
-          const [endHour, endMinute] = window.endTime.split(':').map(Number)
-          
-          const startDateTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute)
-          const endDateTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute)
+    for (const window of validWindows) {
+      try {
+        // Combine date and time into Date objects in local timezone
+        // Parse manually to ensure we're working with local time, not UTC
+        const [startYear, startMonth, startDay] = window.startDate.split('-').map(Number)
+        const [startHour, startMinute] = window.startTime.split(':').map(Number)
+        const [endYear, endMonth, endDay] = window.endDate.split('-').map(Number)
+        const [endHour, endMinute] = window.endTime.split(':').map(Number)
+        
+        const startDateTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute)
+        const endDateTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute)
 
-          await itemListingAPI.setAvailability({
-            item: itemId,
-            startTime: startDateTime,
-            endTime: endDateTime,
-          })
-        } catch (windowError) {
-          console.error('Failed to add availability window:', windowError)
-          // Don't fail the whole operation if a window fails
-        }
+        await itemListingAPI.setAvailability({
+          item: itemId,
+          startTime: startDateTime,
+          endTime: endDateTime,
+        })
+      } catch (windowError) {
+        console.error('Failed to add availability window:', windowError)
+        // Don't fail the whole operation if a window fails
       }
     }
 
