@@ -11,9 +11,18 @@ Vue.js frontend for LocalLoop - MIT's Community Resource Sharing Platform.
 
 2. **Configure environment:**
    Create a `.env` file in the root directory:
+   
+   **For local development (uses Vite proxy):**
    ```env
-   VITE_API_BASE_URL=http://localhost:8000
+   VITE_API_BASE_URL=/api
    ```
+   
+   **For production (Render or other hosted backend):**
+   ```env
+   VITE_API_BASE_URL=https://localloop-backend.onrender.com/api
+   ```
+   
+   Note: The URL should include the `/api` path if your backend serves the API at that path.
 
 3. **Start development server:**
    ```bash

@@ -10,6 +10,9 @@ function buildApiPath(endpoint) {
   // Remove leading slash from endpoint if present
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
   
+  // Check if API_BASE_URL is an absolute URL (starts with http:// or https://)
+  const isAbsoluteUrl = API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
+  
   // Normalize API_BASE_URL (remove trailing slash if present)
   const normalizedBase = API_BASE_URL.endsWith('/') 
     ? API_BASE_URL.slice(0, -1) 
@@ -17,14 +20,18 @@ function buildApiPath(endpoint) {
   
   // If API_BASE_URL ends with /api (with or without trailing slash), don't add /api again
   if (normalizedBase.endsWith('/api')) {
-    return `/${cleanEndpoint}`
+    // For absolute URLs, return path without leading slash (axios will combine correctly)
+    // For relative URLs, return path with leading slash
+    return isAbsoluteUrl ? cleanEndpoint : `/${cleanEndpoint}`
   }
   // If API_BASE_URL is just /api (local dev), use as is
   if (normalizedBase === '/api') {
     return `/${cleanEndpoint}`
   }
   // Otherwise, add /api prefix
-  return `/api/${cleanEndpoint}`
+  // For absolute URLs, return path without leading slash
+  // For relative URLs, return path with leading slash
+  return isAbsoluteUrl ? `api/${cleanEndpoint}` : `/api/${cleanEndpoint}`
 }
 
 // Log API configuration for debugging
@@ -80,13 +87,12 @@ api.interceptors.response.use(
           const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
           // Build full URL - handle both absolute and relative baseURLs
           let refreshUrl
-          if (API_BASE_URL.startsWith('http')) {
-            // Absolute URL
-            refreshUrl = API_BASE_URL.endsWith('/') 
-              ? `${API_BASE_URL.slice(0, -1)}${refreshPath}`
-              : `${API_BASE_URL}${refreshPath}`
+          if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+            // Absolute URL: combine baseURL with path (refreshPath already has correct format)
+            const normalizedBase = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
+            refreshUrl = `${normalizedBase}/${refreshPath}`
           } else {
-            // Relative URL (like /api)
+            // Relative URL (like /api): combine directly
             refreshUrl = `${API_BASE_URL}${refreshPath}`
           }
           
