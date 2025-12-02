@@ -496,11 +496,39 @@ async function handleSubmit() {
 
     // Step 2: List the item
     if (formData.value.listingType !== '' && (formData.value.listingType === 'BORROW' || formData.value.listingType === 'TRANSFER')) {
-      await itemListingAPI.listItem({
-        item: itemId,
-        type: formData.value.listingType,
-        dormVisibility: formData.value.dormVisibility,
-      })
+      try {
+        await itemListingAPI.listItem({
+          item: itemId,
+          type: formData.value.listingType,
+          dormVisibility: formData.value.dormVisibility,
+        })
+        console.log('✅ Item listed successfully:', { itemId, type: formData.value.listingType, dormVisibility: formData.value.dormVisibility })
+        
+        // Verify the listing was created correctly by fetching it
+        try {
+          const createdListing = await itemListingAPI.getListingByItem({ item: itemId })
+          console.log('✅ Verified listing exists:', JSON.stringify(createdListing, null, 2))
+          if (!createdListing.item) {
+            console.error('❌ Listing created but missing item reference!', {
+              listingId: createdListing._id,
+              listingType: createdListing.type,
+              status: createdListing.status,
+              dormVisibility: createdListing.dormVisibility,
+              hasItemField: 'item' in createdListing,
+              itemValue: createdListing.item,
+              allFields: Object.keys(createdListing)
+            })
+            console.error('⚠️ This is a backend issue - listItem should set the item field')
+          } else {
+            console.log('✅ Listing has item reference:', createdListing.item)
+          }
+        } catch (verifyError) {
+          console.warn('⚠️ Could not verify listing immediately:', verifyError)
+        }
+      } catch (listError) {
+        console.error('❌ Failed to list item:', listError)
+        throw new Error('Failed to list item. Please try again.')
+      }
     } else {
       throw new Error('Invalid listing type')
     }
@@ -554,12 +582,20 @@ async function handleSubmit() {
       }
     }
 
+    // Note: listItem already sets status to AVAILABLE, so no need to call updateListingStatus
+
     successMessage.value = 'Item listed successfully!'
     
-    // Redirect to items page after a short delay
-    setTimeout(() => {
-      router.push('/items')
-    }, 1500)
+    // Wait a moment for backend to fully process the listing and populate all fields
+    // The backend may need time to set the item reference on the listing
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Clear the store so ItemsView will definitely refetch when we navigate there
+    // This ensures the new item appears even if there's a slight delay in backend processing
+    itemStore.clearItems()
+    
+    // Navigate to items page - ItemsView will automatically refetch on mount
+    router.push('/items')
   } catch (error) {
     // Error is handled by itemStore.error
     console.error('Failed to create item:', error)

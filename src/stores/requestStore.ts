@@ -90,7 +90,7 @@ export const useRequestStore = defineStore('request', () => {
     }
   }
 
-  async function acceptRequest(requestId: string) {
+  async function acceptRequest(requestId: string): Promise<RequestWithItem | null> {
     isLoading.value = true
     error.value = null
 
@@ -101,7 +101,9 @@ export const useRequestStore = defineStore('request', () => {
       const request = incomingRequests.value.find((r) => r._id === requestId)
       if (request) {
         request.status = 'ACCEPTED'
+        return request
       }
+      return null
     } catch (err: any) {
       error.value = err.message || 'Failed to accept request'
       throw err

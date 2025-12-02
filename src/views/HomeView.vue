@@ -110,7 +110,7 @@
             <p class="text-base text-muted-foreground font-medium">Active Users</p>
           </div>
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">TBD</div>
+            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">{{ displaySuccessfulBorrows() }}</div>
             <p class="text-base text-muted-foreground font-medium">Successful Borrows</p>
           </div>
         </div>
@@ -147,17 +147,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useItemStore } from '@/stores/itemStore'
 import { Card } from '@/components/ui'
 import { Search, Plus, Package, MessageSquare, Star } from 'lucide-vue-next'
 import { getUserCount } from '@/api/auth'
-import { getAvailableListingCount } from '@/api/itemListing'
-
 const authStore = useAuthStore()
+const itemStore = useItemStore()
 const userCount = ref<number | null>(null)
-const itemCount = ref<number | null>(null)
 const isLoading = ref(true)
+
+// Count filtered listings from the shared item store (same filters as Browse Items)
+const filteredAvailableCount = computed(() => {
+  return itemStore.items.filter((item) => item.listingStatus === 'AVAILABLE').length
+})
+
+const formatFilteredCount = () => {
+  if (!itemStore.hasFetched) {
+    return itemStore.isLoading ? '...' : '0'
+  }
+  return filteredAvailableCount.value.toLocaleString()
+}
 
 onMounted(async () => {
   // Set a maximum wait time - if it takes longer, show a fallback
@@ -167,14 +178,23 @@ onMounted(async () => {
       console.warn('⚠️ User count fetch taking too long, showing fallback')
       userCount.value = 0
     }
-    if (itemCount.value === null) {
-      console.warn('⚠️ Item count fetch taking too long, showing fallback')
-      itemCount.value = 0
-    }
     isLoading.value = false
   }, maxWaitTime)
 
-  // Fetch both counts in parallel
+  // Only fetch listings if we haven't already loaded the filtered data elsewhere
+  if (!itemStore.hasFetched) {
+    try {
+      await itemStore.fetchItems({
+        category: 'all',
+        dorm: 'all',
+        searchQuery: '',
+      })
+    } catch (error: any) {
+      console.error('❌ Failed to fetch items for count:', error)
+    }
+  }
+
+  // Fetch all counts in parallel
   try {
     console.log('📊 Fetching user count...')
     const count = await getUserCount()
@@ -189,15 +209,7 @@ onMounted(async () => {
     userCount.value = 0
   }
 
-  try {
-    const count = await getAvailableListingCount()
-    itemCount.value = count
-  } catch (error: any) {
-    console.error('❌ Failed to fetch item count:', error)
-    itemCount.value = 0
-  } finally {
-    isLoading.value = false
-  }
+  isLoading.value = false
 })
 
 const displayUserCount = () => {
@@ -209,12 +221,7 @@ const displayUserCount = () => {
   return count.toLocaleString()
 }
 
-const displayItemCount = () => {
-  if (isLoading.value && itemCount.value === null) {
-    return '...'
-  }
-  // If we have a count, show it; otherwise show 0
-  const count = itemCount.value ?? 0
-  return count.toLocaleString()
-}
+const displayItemCount = () => formatFilteredCount()
+
+const displaySuccessfulBorrows = () => formatFilteredCount()
 </script>

@@ -9,7 +9,7 @@ export interface UserProfile {
   createdAt: Date
   lenderScore: number
   borrowerScore: number
-  points?: number
+  points: number
 }
 
 export interface CreateProfileRequest {
@@ -85,7 +85,27 @@ export async function getProfile(
     data
   )
   const result = extractData(response)
-  return result.length > 0 ? result[0].profile : null
+  if (result.length > 0) {
+    const profile = result[0].profile
+    console.log('Profile API response:', {
+      userId: data.user,
+      points: profile.points,
+      pointsType: typeof profile.points,
+      fullProfile: profile
+    })
+    // Ensure points is a number - handle cases where old profiles don't have points
+    if (profile.points === undefined || profile.points === null) {
+      profile.points = 0
+    } else {
+      profile.points = Number(profile.points)
+      // Ensure it's a valid number
+      if (isNaN(profile.points)) {
+        profile.points = 0
+      }
+    }
+    return profile
+  }
+  return null
 }
 
 export async function getUsersByDorm(

@@ -167,7 +167,9 @@ const filteredItems = computed(() => {
       item.description.toLowerCase().includes(searchQuery.value.toLowerCase())
     const matchesCategory =
       selectedCategory.value === 'all' || item.category === selectedCategory.value
-    const matchesDorm = selectedDorm.value === 'all' || item.dorm === selectedDorm.value
+    const listingVisibility = item.listingDormVisibility || 'ALL'
+    const matchesDorm =
+      selectedDorm.value === 'all' || listingVisibility === selectedDorm.value
     return matchesSearch && matchesCategory && matchesDorm
   })
 })

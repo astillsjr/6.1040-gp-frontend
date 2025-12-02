@@ -7,6 +7,7 @@ export type WindowStatus = 'AVAILABLE' | 'RESERVED'
 
 export interface Listing {
   _id: string
+  item?: string
   type: ListingType
   status: ListingStatus
   dormVisibility: string
@@ -184,19 +185,23 @@ export async function getListings(
   return extractData(response)
 }
 
-export interface GetListingCountResponse {
+export interface GetAvailableItemCountResponse {
   count: number
 }
 
 export async function getAvailableListingCount(): Promise<number> {
   try {
-    console.log('📦 Fetching available listings count...')
-    // Get all listings with status AVAILABLE
-    const listings = await getListings({ status: 'AVAILABLE' })
-    console.log('✅ Available listings count received:', listings.length)
-    return listings.length
+    console.log('📦 Fetching available item count...')
+    const response = await apiClient.post<Array<GetAvailableItemCountResponse>>(
+      buildApiPath('ItemListing/_getAvailableItemCount'),
+      {}
+    )
+    const result = extractData(response)
+    const count = result.length > 0 ? result[0].count : 0
+    console.log('✅ Available item count received:', count)
+    return count
   } catch (error: any) {
-    console.error('❌ Error fetching listing count:', error)
+    console.error('❌ Error fetching available item count:', error)
     console.error('Error details:', {
       message: error.message,
       response: error.response?.data,

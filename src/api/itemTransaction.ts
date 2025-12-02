@@ -67,3 +67,38 @@ export async function cancelTransaction(data: { transaction: string }): Promise<
   const accessToken = localStorage.getItem('accessToken')
   await apiClient.post(buildApiPath('ItemTransaction/cancelTransaction'), { ...data, accessToken })
 }
+
+export interface GetSuccessfulBorrowsCountResponse {
+  count: number
+}
+
+export async function getSuccessfulBorrowsCount(): Promise<number> {
+  try {
+    console.log('📊 Fetching successful borrows count...')
+    const apiPath = buildApiPath('ItemTransaction/_getSuccessfulBorrowsCount')
+    console.log('🔗 API Path:', apiPath)
+    const response = await apiClient.post<Array<GetSuccessfulBorrowsCountResponse>>(
+      apiPath,
+      {}
+    )
+    console.log('📦 Raw response:', response)
+    const result = extractData(response)
+    console.log('📊 Extracted result:', result)
+    const count = result.length > 0 ? result[0].count : 0
+    console.log('✅ Successful borrows count received:', count)
+    if (count === 0 && result.length > 0) {
+      console.warn('⚠️ Count is 0 but result exists:', result[0])
+    }
+    return count
+  } catch (error: any) {
+    console.error('❌ Error fetching successful borrows count:', error)
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      code: error.code,
+      stack: error.stack,
+    })
+    return 0
+  }
+}

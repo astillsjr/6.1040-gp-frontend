@@ -28,6 +28,7 @@ export interface DisplayItem {
   listingId?: string
   listingType?: 'BORROW' | 'TRANSFER'
   listingStatus?: 'AVAILABLE' | 'PENDING' | 'CLAIMED' | 'EXPIRED'
+  listingDormVisibility?: string
 }
 
 export const useItemStore = defineStore('item', () => {
@@ -36,6 +37,7 @@ export const useItemStore = defineStore('item', () => {
   const currentItem = ref<DisplayItem | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const hasFetched = ref(false)
 
   // Cache for profiles to avoid duplicate fetches
   const profileCache = ref<Map<string, UserProfile>>(new Map())
@@ -126,6 +128,7 @@ export const useItemStore = defineStore('item', () => {
       listingId: listing?._id,
       listingType: listing?.type,
       listingStatus: listing?.status,
+      listingDormVisibility: listing?.dormVisibility,
     }
   }
 
@@ -139,35 +142,43 @@ export const useItemStore = defineStore('item', () => {
       isLoading.value = true
       error.value = null
 
-      // Fetch all items
-      const allItemsResponse = await itemAPI.getAllItems()
-      const allItems = allItemsResponse.items
+      // Fetch only AVAILABLE listings; claimed/pending/exired listings won't be returned
+      const listingFilters: itemListingAPI.GetListingsRequest = {
+        status: 'AVAILABLE',
+      }
+      if (filters?.dorm && filters.dorm !== 'all') {
+        listingFilters.dormVisibility = filters.dorm
+      }
+      const availableListings = await itemListingAPI.getListings(listingFilters)
+      console.log('📦 Fetched listings:', availableListings.length)
+      
+      // Log sample listing structure to debug
+      if (availableListings.length > 0) {
+        console.log('📋 Sample listing structure:', JSON.stringify(availableListings[0], null, 2))
+      }
 
-      // Check each item to see if it has an available listing
-      // Note: We check each item individually since listing response doesn't include item ID
+      // Map listings to their corresponding items
       const itemsWithListings = await Promise.all(
-        allItems.map(async (item) => {
-          try {
-            // Check if this item has an available listing
-            const listing = await itemListingAPI.getListingByItem({
-              item: item._id,
+        availableListings.map(async (listing) => {
+          if (!listing.item) {
+            console.warn('⚠️ Listing missing item reference:', {
+              listingId: listing._id,
+              type: listing.type,
+              status: listing.status,
+              dormVisibility: listing.dormVisibility,
+              hasItemField: 'item' in listing,
+              allFields: Object.keys(listing)
             })
-
-            // Only include if listing exists and is available
-            if (listing && listing.status === 'AVAILABLE') {
-              // Apply dorm filter if specified
-              if (
-                filters?.dorm &&
-                filters.dorm !== 'all' &&
-                listing.dormVisibility !== filters.dorm
-              ) {
-                return null
-              }
-              return { item, listing }
-            }
             return null
+          }
+          try {
+            const backendItem = await itemAPI.getItemById({ item: listing.item })
+            return { item: backendItem, listing }
           } catch (err) {
-            // Item doesn't have a listing, skip it
+            console.error(
+              `Failed to fetch item ${listing.item} for listing ${listing._id}:`,
+              err
+            )
             return null
           }
         })
@@ -203,6 +214,7 @@ export const useItemStore = defineStore('item', () => {
       }
 
       items.value = filtered
+      hasFetched.value = true
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch items'
@@ -343,11 +355,19 @@ export const useItemStore = defineStore('item', () => {
     }
   }
 
+  function removeItemById(itemId: string) {
+    items.value = items.value.filter((item) => item.id !== itemId)
+    if (currentItem.value?.id === itemId) {
+      currentItem.value = null
+    }
+  }
+
   function clearItems() {
     items.value = []
     currentItem.value = null
     error.value = null
     profileCache.value.clear()
+    hasFetched.value = false
   }
 
   return {
@@ -356,6 +376,7 @@ export const useItemStore = defineStore('item', () => {
     currentItem,
     isLoading,
     error,
+    hasFetched,
     // Getters
     itemsByOwner,
     // Actions
@@ -364,6 +385,7 @@ export const useItemStore = defineStore('item', () => {
     createItem,
     updateItem,
     deleteItem,
+    removeItemById,
     clearItems,
   }
 })

@@ -30,13 +30,22 @@ export const useUserProfileStore = defineStore('userProfile', () => {
       error.value = null
 
       const profile = await userProfileAPI.getProfile({ user: userId })
-      currentProfile.value = profile
+      if (profile) {
+        currentProfile.value = profile
+        console.log('Profile fetched successfully. Points:', profile.points)
+      } else {
+        console.warn('Profile returned null for user:', userId)
+        // Don't set to null if we already have a profile - keep the existing one
+        if (!currentProfile.value) {
+          currentProfile.value = null
+        }
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch profile'
       error.value = errorMessage
       console.error('Error fetching profile:', err)
-      currentProfile.value = null
+      // Don't clear existing profile on error
     } finally {
       isLoading.value = false
     }

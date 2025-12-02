@@ -229,6 +229,31 @@
       :item-image="selectedMatch.itemImage"
       @close="closeChat"
     />
+
+    <!-- Points Notification -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-300 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <div
+        v-if="pointsNotification.show"
+        class="fixed top-4 right-4 z-[100] bg-gradient-to-r from-recycling-green to-recycling-green-light text-white rounded-xl shadow-2xl p-4 min-w-[280px] border-2 border-recycling-green-dark"
+      >
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 rounded-full p-2">
+            <Trophy class="w-6 h-6" />
+          </div>
+          <div class="flex-1">
+            <p class="font-bold text-lg">+{{ pointsNotification.points }} Points!</p>
+            <p class="text-sm text-white/90">Request accepted successfully</p>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -237,6 +262,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRequestStore } from '@/stores/requestStore'
 import { useTransactionStore } from '@/stores/transactionStore'
+import { useUserProfileStore } from '@/stores/userProfileStore'
+import { useItemStore } from '@/stores/itemStore'
 import { Button, Card, Badge } from '@/components/ui'
 import { useRouter } from 'vue-router'
 import ActivityCard from '@/components/ActivityCard.vue'
@@ -244,7 +271,7 @@ import ChatModal from '@/components/ChatModal.vue'
 import * as itemsAPI from '@/api/items'
 import * as itemListingAPI from '@/api/itemListing'
 import * as userProfileAPI from '@/api/userProfile'
-import { MessageCircle } from 'lucide-vue-next'
+import { MessageCircle, Trophy } from 'lucide-vue-next'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import { useMessageStore } from '@/stores/messageStore'
 
@@ -253,6 +280,8 @@ const authStore = useAuthStore()
 const requestStore = useRequestStore()
 const transactionStore = useTransactionStore()
 const messageStore = useMessageStore()
+const userProfileStore = useUserProfileStore()
+const itemStore = useItemStore()
 
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -260,6 +289,9 @@ const error = ref<string | null>(null)
 // Chat modal state
 const chatModalOpen = ref(false)
 const selectedMatch = ref<Match | null>(null)
+
+// Points notification state
+const pointsNotification = ref<{ show: boolean; points: number }>({ show: false, points: 0 })
 
 // User's own listings
 interface UserListing {
@@ -850,16 +882,68 @@ async function handleAction(action: { type: string; id: string; action: string }
 
 async function handleAcceptRequest(requestId: string) {
   try {
-    await requestStore.acceptRequest(requestId)
-    alert('Request accepted! A transaction has been created.')
+    // Get current points before accepting
+    const previousPoints = userProfileStore.points
+    console.log('Points before accepting:', previousPoints)
+    
+    const acceptedRequest = await requestStore.acceptRequest(requestId)
+    const acceptedItemId = acceptedRequest?.itemDetails?._id || acceptedRequest?.item
+    
+    // Wait a moment for backend to process points update, then retry if needed
+    let retries = 3
+    let pointsUpdated = false
+    
+    while (retries > 0 && !pointsUpdated) {
+      // Wait before fetching (longer wait on first attempt)
+      await new Promise(resolve => setTimeout(resolve, retries === 3 ? 1000 : 500))
+      
+      // Refresh user profile to get updated points
+      if (authStore.userId) {
+        await userProfileStore.fetchProfile(authStore.userId)
+        
+        // Check if profile was fetched successfully
+        if (userProfileStore.currentProfile) {
+          const newPoints = userProfileStore.points
+          console.log(`Points after accepting (attempt ${4 - retries}):`, newPoints)
+          
+          if (newPoints > previousPoints) {
+            const pointsGained = newPoints - previousPoints
+            showPointsNotification(pointsGained)
+            pointsUpdated = true
+          } else if (retries === 1) {
+            // Last attempt - log warning
+            console.warn('Points did not increase after all retries. Previous:', previousPoints, 'New:', newPoints)
+          }
+        }
+      }
+      
+      retries--
+    }
+    
     await Promise.all([
       requestStore.fetchIncomingRequests(authStore.userId!),
       transactionStore.fetchTransactions(authStore.userId!),
     ])
     await fetchMatches()
+    
+    // Remove item locally so browse page updates immediately
+    if (acceptedItemId) {
+      itemStore.removeItemById(acceptedItemId)
+    }
+    // Refresh items on browse page so CLAIMED items disappear for everyone
+    await itemStore.fetchItems()
   } catch (err) {
+    console.error('Error accepting request:', err)
     alert('Failed to accept request. Please try again.')
   }
+}
+
+function showPointsNotification(points: number) {
+  pointsNotification.value = { show: true, points }
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    pointsNotification.value.show = false
+  }, 5000)
 }
 
 async function handleRejectRequest(requestId: string) {
