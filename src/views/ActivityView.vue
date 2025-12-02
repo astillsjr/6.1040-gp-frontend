@@ -34,6 +34,103 @@
 
       <!-- Activity Sections -->
       <div v-else class="space-y-8">
+        <!-- DIRECT COMMUNICATION (MATCHES) -->
+        <section v-if="matches.length > 0" class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
+          <h2 class="text-2xl font-bold text-blue-900 mb-5 flex items-center gap-3">
+            <MessageCircle class="w-6 h-6 text-blue-600" />
+            <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+              {{ matches.length }}
+            </span>
+            Direct Communication
+          </h2>
+          <p class="text-blue-800 mb-5 text-sm">Connect with users you've matched with for item exchanges</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card
+              v-for="match in matches"
+              :key="match.id"
+              class="p-4 hover:shadow-md transition-shadow border-2"
+            >
+              <div class="flex gap-4">
+                <!-- Other User Avatar -->
+                <div class="flex-shrink-0">
+                  <img
+                    :src="getUserAvatar(match.otherUserProfile, match.otherUserId)"
+                    :alt="match.otherUserProfile?.displayName || 'User'"
+                    class="w-16 h-16 rounded-full border-2 border-blue-300"
+                  />
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 class="font-semibold text-gray-900 text-base">
+                        {{ match.otherUserProfile?.displayName || `User ${match.otherUserId.slice(0, 8)}...` }}
+                      </h3>
+                      <p class="text-sm text-gray-600">
+                        {{ match.otherUserProfile?.dorm || 'No dorm set' }}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" class="ml-2">
+                      {{ getMatchStatusLabel(match.status) }}
+                    </Badge>
+                  </div>
+
+                  <!-- Item Info -->
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-md overflow-hidden">
+                      <ImageWithFallback
+                        :src="match.itemImage || `https://via.placeholder.com/150?text=${encodeURIComponent(match.itemTitle)}`"
+                        :alt="match.itemTitle"
+                        class="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-900 truncate">{{ match.itemTitle }}</p>
+                      <p class="text-xs text-gray-500">
+                        {{ match.matchType === 'accepted-request' ? 'Request accepted' : 'Active transaction' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Communication Placeholder -->
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-xs text-blue-800 mb-2">
+                      <MessageCircle class="w-4 h-4 inline mr-1" />
+                      Ready to coordinate pickup and exchange details
+                    </p>
+                    <div class="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        class="flex-1 text-xs relative"
+                        @click="openChat(match)"
+                      >
+                        <MessageCircle class="w-3 h-3 mr-1" />
+                        Chat
+                        <span
+                          v-if="getUnreadCount(match) > 0"
+                          class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold border-2 border-white"
+                        >
+                          {{ getUnreadCount(match) > 9 ? '9+' : getUnreadCount(match) }}
+                        </span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        class="flex-1 text-xs"
+                        @click="router.push(`/items/${match.itemId}`)"
+                      >
+                        View Item
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+
         <!-- ACTION REQUIRED -->
         <section v-if="actionRequired.length > 0" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
           <h2 class="text-2xl font-bold text-amber-900 mb-5 flex items-center gap-3">
@@ -120,6 +217,18 @@
         </section>
       </div>
     </div>
+
+    <!-- Chat Modal -->
+    <ChatModal
+      v-if="selectedMatch"
+      :is-open="chatModalOpen"
+      :other-user-id="selectedMatch.otherUserId"
+      :other-user-profile="selectedMatch.otherUserProfile"
+      :item-id="selectedMatch.itemId"
+      :item-title="selectedMatch.itemTitle"
+      :item-image="selectedMatch.itemImage"
+      @close="closeChat"
+    />
   </div>
 </template>
 
@@ -128,19 +237,29 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRequestStore } from '@/stores/requestStore'
 import { useTransactionStore } from '@/stores/transactionStore'
-import { Button } from '@/components/ui'
+import { Button, Card, Badge } from '@/components/ui'
 import { useRouter } from 'vue-router'
 import ActivityCard from '@/components/ActivityCard.vue'
+import ChatModal from '@/components/ChatModal.vue'
 import * as itemsAPI from '@/api/items'
 import * as itemListingAPI from '@/api/itemListing'
+import * as userProfileAPI from '@/api/userProfile'
+import { MessageCircle } from 'lucide-vue-next'
+import ImageWithFallback from '@/components/ImageWithFallback.vue'
+import { useMessageStore } from '@/stores/messageStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const requestStore = useRequestStore()
 const transactionStore = useTransactionStore()
+const messageStore = useMessageStore()
 
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// Chat modal state
+const chatModalOpen = ref(false)
+const selectedMatch = ref<Match | null>(null)
 
 // User's own listings
 interface UserListing {
@@ -426,7 +545,152 @@ function getListingStatusBadge(status: string): { text: string; variant: 'defaul
   }
 }
 
+// Matches for direct communication
+interface Match {
+  id: string
+  otherUserId: string
+  otherUserProfile: userProfileAPI.UserProfile | null
+  itemId: string
+  itemTitle: string
+  itemImage: string | null
+  matchType: 'accepted-request' | 'transaction'
+  status: string
+  date: Date
+  rawData: any
+}
+
+const matches = ref<Match[]>([])
+const loadingMatches = ref(false)
+
+async function fetchMatches() {
+  if (!authStore.userId) return
+  
+  loadingMatches.value = true
+  const matchesList: Match[] = []
+  const profileCache = new Map<string, userProfileAPI.UserProfile | null>()
+
+  try {
+    // Helper to get or fetch profile
+    async function getProfile(userId: string): Promise<userProfileAPI.UserProfile | null> {
+      if (profileCache.has(userId)) {
+        return profileCache.get(userId)!
+      }
+      try {
+        const profile = await userProfileAPI.getProfile({ user: userId })
+        profileCache.set(userId, profile)
+        return profile
+      } catch (err) {
+        console.error(`Failed to fetch profile for user ${userId}:`, err)
+        profileCache.set(userId, null)
+        return null
+      }
+    }
+
+    // Helper to get item photo
+    async function getItemPhoto(itemId: string): Promise<string | null> {
+      try {
+        const photos = await itemListingAPI.getPhotosByItem({ item: itemId })
+        if (photos && photos.length > 0) {
+          const sorted = photos.sort((a, b) => (a.order || 0) - (b.order || 0))
+          return sorted[0].photoUrl
+        }
+      } catch (err) {
+        console.error(`Failed to fetch photos for item ${itemId}:`, err)
+      }
+      return null
+    }
+
+    // 1. ACCEPTED incoming requests (user accepted someone's request)
+    for (const req of requestStore.incomingRequests) {
+      if (req.status === 'ACCEPTED') {
+        const otherUserId = req.requester
+        const profile = await getProfile(otherUserId)
+        const itemPhoto = await getItemPhoto(req.item)
+        
+        matchesList.push({
+          id: `match-req-in-${req._id}`,
+          otherUserId,
+          otherUserProfile: profile,
+          itemId: req.item,
+          itemTitle: req.itemDetails?.title || 'Item',
+          itemImage: itemPhoto,
+          matchType: 'accepted-request',
+          status: 'ACCEPTED',
+          date: new Date(req.createdAt),
+          rawData: req,
+        })
+      }
+    }
+
+    // 2. ACCEPTED outgoing requests (user's request was accepted)
+    for (const req of requestStore.outgoingRequests) {
+      if (req.status === 'ACCEPTED') {
+        // Need to get the item owner
+        const itemDetails = req.itemDetails
+        if (itemDetails && itemDetails.owner) {
+          const otherUserId = itemDetails.owner
+          const profile = await getProfile(otherUserId)
+          const itemPhoto = await getItemPhoto(req.item)
+          
+          matchesList.push({
+            id: `match-req-out-${req._id}`,
+            otherUserId,
+            otherUserProfile: profile,
+            itemId: req.item,
+            itemTitle: itemDetails.title || 'Item',
+            itemImage: itemPhoto,
+            matchType: 'accepted-request',
+            status: 'ACCEPTED',
+            date: new Date(req.createdAt),
+            rawData: req,
+          })
+        }
+      }
+    }
+
+    // 3. Active transactions (PENDING_PICKUP, IN_PROGRESS, PENDING_RETURN)
+    for (const tx of transactionStore.transactions) {
+      if (['PENDING_PICKUP', 'IN_PROGRESS', 'PENDING_RETURN'].includes(tx.status)) {
+        const otherUserId = tx.isLending ? tx.to : tx.from
+        const profile = await getProfile(otherUserId)
+        const itemPhoto = await getItemPhoto(tx.item)
+        
+        matchesList.push({
+          id: `match-tx-${tx._id}`,
+          otherUserId,
+          otherUserProfile: profile,
+          itemId: tx.item,
+          itemTitle: tx.itemDetails?.title || 'Item',
+          itemImage: itemPhoto,
+          matchType: 'transaction',
+          status: tx.status,
+          date: new Date(tx.createdAt),
+          rawData: tx,
+        })
+      }
+    }
+
+    // Remove duplicates (same user + same item) and sort by date
+    const uniqueMatches = new Map<string, Match>()
+    for (const match of matchesList) {
+      const key = `${match.otherUserId}-${match.itemId}`
+      if (!uniqueMatches.has(key) || new Date(match.date) > new Date(uniqueMatches.get(key)!.date)) {
+        uniqueMatches.set(key, match)
+      }
+    }
+
+    matches.value = Array.from(uniqueMatches.values()).sort(
+      (a, b) => b.date.getTime() - a.date.getTime()
+    )
+  } catch (err) {
+    console.error('Error fetching matches:', err)
+  } finally {
+    loadingMatches.value = false
+  }
+}
+
 const hasNoActivity = computed(() => 
+  matches.value.length === 0 &&
   actionRequired.value.length === 0 &&
   waiting.value.length === 0 &&
   active.value.length === 0 &&
@@ -450,6 +714,8 @@ onMounted(async () => {
       transactionStore.fetchTransactions(authStore.userId),
       fetchUserListings(),
     ])
+    // Fetch matches after requests and transactions are loaded
+    await fetchMatches()
   } catch (err: any) {
     error.value = err.message || 'Failed to load activity'
   } finally {
@@ -521,6 +787,48 @@ function formatRelativeTime(date: Date | string | null): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function getUserAvatar(profile: userProfileAPI.UserProfile | null, userId: string): string {
+  const name = profile?.displayName || userId || 'User'
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`
+}
+
+function getMatchStatusLabel(status: string): string {
+  switch (status) {
+    case 'ACCEPTED':
+      return 'MATCHED'
+    case 'PENDING_PICKUP':
+      return 'PENDING PICKUP'
+    case 'IN_PROGRESS':
+      return 'IN PROGRESS'
+    case 'PENDING_RETURN':
+      return 'PENDING RETURN'
+    default:
+      return status
+  }
+}
+
+function openChat(match: Match) {
+  selectedMatch.value = match
+  chatModalOpen.value = true
+}
+
+function closeChat() {
+  chatModalOpen.value = false
+  // Keep selectedMatch for a moment to allow smooth closing animation
+  setTimeout(() => {
+    selectedMatch.value = null
+  }, 300)
+}
+
+function getUnreadCount(match: Match): number {
+  if (!authStore.userId) return 0
+  return messageStore.getConversationUnreadCount(
+    authStore.userId,
+    match.otherUserId,
+    match.itemId
+  )
+}
+
 async function handleAction(action: { type: string; id: string; action: string }) {
   // Action handlers
   if (action.action === 'accept-request') {
@@ -544,7 +852,11 @@ async function handleAcceptRequest(requestId: string) {
   try {
     await requestStore.acceptRequest(requestId)
     alert('Request accepted! A transaction has been created.')
-    await transactionStore.fetchTransactions(authStore.userId!)
+    await Promise.all([
+      requestStore.fetchIncomingRequests(authStore.userId!),
+      transactionStore.fetchTransactions(authStore.userId!),
+    ])
+    await fetchMatches()
   } catch (err) {
     alert('Failed to accept request. Please try again.')
   }
@@ -572,6 +884,8 @@ async function handleMarkPickedUp(transactionId: string) {
   try {
     await transactionStore.markPickedUp(transactionId)
     alert('Pickup confirmed!')
+    await transactionStore.fetchTransactions(authStore.userId!)
+    await fetchMatches()
   } catch (err) {
     alert('Failed to confirm pickup. Please try again.')
   }
@@ -581,6 +895,8 @@ async function handleMarkReturned(transactionId: string) {
   try {
     await transactionStore.markReturned(transactionId)
     alert('Marked as returned! Waiting for owner confirmation.')
+    await transactionStore.fetchTransactions(authStore.userId!)
+    await fetchMatches()
   } catch (err) {
     alert('Failed to mark as returned. Please try again.')
   }
@@ -590,6 +906,8 @@ async function handleConfirmReturn(transactionId: string) {
   try {
     await transactionStore.confirmReturn(transactionId)
     alert('Return confirmed! Transaction completed.')
+    await transactionStore.fetchTransactions(authStore.userId!)
+    await fetchMatches()
   } catch (err) {
     alert('Failed to confirm return. Please try again.')
   }

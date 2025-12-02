@@ -21,6 +21,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     if (!currentProfile.value) return 0
     return (currentProfile.value.lenderScore + currentProfile.value.borrowerScore) / 2
   })
+  const points = computed(() => currentProfile.value?.points || 0)
 
   // Actions
   async function fetchProfile(userId: string) {
@@ -128,6 +129,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     lenderScore,
     borrowerScore,
     averageScore,
+    points,
     // Actions
     fetchProfile,
     createProfile,

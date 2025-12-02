@@ -31,15 +31,15 @@
       <template v-else>
         <!-- Profile Info Card -->
         <Card class="p-6 mb-6 border-2">
-          <div class="flex items-start gap-5">
+          <div class="flex flex-col sm:flex-row items-start gap-5">
             <img
               :src="userAvatar"
               :alt="userProfileStore.displayName || 'User'"
               class="w-20 h-20 rounded-full border-2 border-border"
             />
-            <div class="flex-1">
+            <div class="flex-1 w-full sm:w-auto">
               <h2 class="text-2xl font-bold text-foreground mb-2">
-                {{ userProfileStore.displayName || 'No display name set' }}
+                {{ userProfileStore.displayName || authStore.username || 'No display name set' }}
               </h2>
               <p class="text-muted-foreground mb-3 text-base">{{ userProfileStore.dorm || 'No dorm set' }}</p>
               <div class="flex items-center gap-4 flex-wrap">
@@ -54,6 +54,14 @@
                 </span>
               </div>
             </div>
+            <!-- Points Display -->
+            <div class="text-center bg-gradient-to-br from-recycling-green-pale to-recycling-green-subtle p-4 rounded-xl border-2 border-recycling-green-subtle w-full sm:w-auto sm:min-w-[120px]">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <Trophy class="w-5 h-5 text-recycling-green" />
+                <span class="text-2xl font-bold text-recycling-green-dark">{{ userProfileStore.points }}</span>
+              </div>
+              <p class="text-sm text-recycling-green-dark font-medium">points</p>
+            </div>
           </div>
         </Card>
 
@@ -65,27 +73,17 @@
           </CardHeader>
           <CardContent>
             <form @submit.prevent="handleUpdateProfile" class="space-y-5">
-              <div class="space-y-2">
-                <Label for="displayName" class="font-medium">Display Name</Label>
-                <Input
-                  id="displayName"
-                  v-model="formData.displayName"
-                  type="text"
-                  placeholder="Your display name"
-                  required
-                  :disabled="userProfileStore.isLoading"
-                  class="h-12 rounded-xl border-2 focus:border-primary"
-                />
-              </div>
+           
 
               <div class="space-y-2">
-                <Label for="dorm" class="font-medium">Dorm</Label>
+                <Label for="dorm" class="font-medium">Dorm <span class="text-destructive">*</span></Label>
                 <Select
                   id="dorm"
                   :model-value="formData.dorm"
-                  @update:model-value="formData.dorm = $event"
+                  @update:model-value="(value) => { formData.dorm = value; dormError.value = '' }"
                   required
                   :disabled="userProfileStore.isLoading"
+                  :class="{ 'border-destructive': dormError }"
                 >
                   <SelectItem value="" label="Select your dorm" />
                   <SelectItem
@@ -95,6 +93,8 @@
                     :label="dorm"
                   />
                 </Select>
+                <p v-if="dormError" class="text-sm text-destructive font-medium">{{ dormError }}</p>
+                <p v-else class="text-sm text-muted-foreground">Please select your dorm (required)</p>
               </div>
 
               <div class="space-y-2">
@@ -147,7 +147,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useUserProfileStore } from '@/stores/userProfileStore'
 import { Button, Input, Label, Textarea, Card, CardHeader, CardTitle, CardDescription, CardContent, Select, SelectItem } from '@/components/ui'
-import { Star } from 'lucide-vue-next'
+import { Star, Trophy } from 'lucide-vue-next'
 import { VALID_DORMS } from '@/utils/validDorms'
 
 const route = useRoute()
@@ -160,13 +160,14 @@ const successMessage = ref('')
 const isNewUser = computed(() => route.query.welcome === 'true')
 
 const formData = ref({
-  displayName: '',
   dorm: '',
   bio: '',
 })
 
+const dormError = ref('')
+
 const isFormValid = computed(() => {
-  return formData.value.displayName.trim() !== '' && formData.value.dorm !== ''
+  return formData.value.dorm !== '' && formData.value.dorm.trim() !== ''
 })
 
 const userAvatar = computed(() => {
@@ -189,7 +190,6 @@ watch(
   (profile) => {
     if (profile) {
       formData.value = {
-        displayName: profile.displayName || '',
         dorm: profile.dorm || '',
         bio: profile.bio || '',
       }
@@ -205,10 +205,9 @@ async function loadProfile() {
 
   await userProfileStore.fetchProfile(authStore.userId)
   
-  // If no profile exists, initialize form with username as default displayName
+  // If no profile exists, initialize form
   if (!userProfileStore.hasProfile) {
     formData.value = {
-      displayName: authStore.username || '',
       dorm: '',
       bio: '',
     }
@@ -221,13 +220,23 @@ async function handleUpdateProfile() {
   }
 
   successMessage.value = ''
+  dormError.value = ''
+
+  // Validate dorm is required
+  if (!formData.value.dorm || formData.value.dorm.trim() === '') {
+    dormError.value = 'Please select your dorm to continue'
+    return
+  }
 
   try {
+    // Display name is always set to username
+    const displayName = authStore.username || ''
+    
     if (userProfileStore.hasProfile) {
-      // Update existing profile (supports all fields including bio)
+      // Update existing profile (displayName is always username, only update dorm and bio)
       await userProfileStore.updateProfile({
         user: authStore.userId,
-        displayName: formData.value.displayName.trim(),
+        displayName: displayName,
         dorm: formData.value.dorm,
         bio: formData.value.bio.trim(),
       })
@@ -236,10 +245,10 @@ async function handleUpdateProfile() {
         successMessage.value = ''
       }, 3000)
     } else {
-      // Create new profile (only supports displayName and dorm initially)
+      // Create new profile with username as displayName
       await userProfileStore.createProfile({
         user: authStore.userId,
-        displayName: formData.value.displayName.trim(),
+        displayName: displayName,
         dorm: formData.value.dorm,
       })
       
@@ -247,7 +256,7 @@ async function handleUpdateProfile() {
       if (formData.value.bio.trim()) {
         await userProfileStore.updateProfile({
           user: authStore.userId,
-          displayName: formData.value.displayName.trim(),
+          displayName: displayName,
           dorm: formData.value.dorm,
           bio: formData.value.bio.trim(),
         })

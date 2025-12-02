@@ -123,27 +123,46 @@
               </p>
             </div>
 
-            <!-- Photo URLs (optional) -->
+            <!-- Photo Upload (required) -->
             <div class="space-y-2">
-              <Label>Photo URLs (Optional)</Label>
-              <div v-for="(_, index) in formData.photoUrls" :key="index" class="flex gap-2">
-                <Input
-                  v-model="formData.photoUrls[index]"
-                  type="url"
-                  :placeholder="`Photo URL ${index + 1}: https://example.com/image.jpg`"
-                  :disabled="itemStore.isLoading"
-                  class="flex-1"
-                />
-                <Button
-                  v-if="formData.photoUrls.length > 1"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  @click="removePhotoField(index)"
-                  :disabled="itemStore.isLoading"
-                >
-                  Remove
-                </Button>
+              <Label>Photos <span class="text-destructive">*</span></Label>
+              <div v-for="(photo, index) in formData.photos" :key="index" class="space-y-2">
+                <div class="flex gap-2 items-start">
+                  <div class="flex-1">
+                    <input
+                      :id="`photo-${index}`"
+                      type="file"
+                      accept="image/*"
+                      @change="handlePhotoChange(index, $event)"
+                      :disabled="itemStore.isLoading"
+                      class="flex h-12 w-full rounded-xl border-2 border-input bg-input-background px-3 py-1 text-base file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      :required="index === 0"
+                    />
+                    <p v-if="photoError[index]" class="text-sm text-destructive font-medium mt-1">{{ photoError[index] }}</p>
+                    <p v-if="formData.photos[index]" class="text-sm text-muted-foreground mt-1">
+                      Selected: {{ formData.photos[index]?.name }}
+                    </p>
+                  </div>
+                  <Button
+                    v-if="formData.photos.length > 1"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="removePhotoField(index)"
+                    :disabled="itemStore.isLoading"
+                    class="mt-0"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <!-- Photo Preview -->
+                <div v-if="photoPreviews[index]" class="mt-2">
+                  <img
+                    :src="photoPreviews[index]"
+                    :alt="`Preview ${index + 1}`"
+                    class="w-32 h-32 object-cover rounded-lg border-2 border-border"
+                  />
+                </div>
               </div>
               <Button
                 type="button"
@@ -155,7 +174,7 @@
                 + Add Another Photo
               </Button>
               <p class="text-sm text-muted-foreground">
-                Add multiple photos to showcase your item
+                Upload at least one photo of your item (required)
               </p>
             </div>
 
@@ -280,7 +299,7 @@
               </Button>
             </div>
             <p v-if="!isFormValid" class="text-sm text-amber-600 text-right">
-              * Please fill all required fields and add at least one pickup availability window
+              * Please fill all required fields, upload at least one photo, and add at least one pickup availability window
             </p>
           </form>
         </CardContent>
@@ -313,8 +332,11 @@ const formData = ref({
   condition: '',
   listingType: '' as 'BORROW' | 'TRANSFER' | '',
   dormVisibility: '',
-  photoUrls: [''] as string[], // Changed to array for multiple photos
+  photos: [null] as (File | null)[],
 })
+
+const photoPreviews = ref<string[]>([''])
+const photoError = ref<Record<number, string>>({})
 
 interface AvailabilityWindow {
   startDate: string
@@ -336,22 +358,97 @@ const isFormValid = computed(() => {
     formData.value.listingType !== '' &&
     formData.value.dormVisibility !== ''
 
+  // Require at least one photo
+  const hasPhoto = formData.value.photos.some(photo => photo !== null)
+
   // Require at least one valid availability window for all listing types
   const hasValidWindow = availabilityWindows.value.some(w => 
     w.startDate && w.startTime && w.endDate && w.endTime
   )
-  return basicValid && hasValidWindow
+  return basicValid && hasPhoto && hasValidWindow
 })
 
+function handlePhotoChange(index: number, event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  // Clear any previous errors
+  delete photoError.value[index]
+  
+  if (!file) {
+    formData.value.photos[index] = null
+    photoPreviews.value[index] = ''
+    return
+  }
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    photoError.value[index] = 'Please select an image file'
+    formData.value.photos[index] = null
+    photoPreviews.value[index] = ''
+    // Reset the input
+    target.value = ''
+    return
+  }
+
+  // Validate file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    photoError.value[index] = 'Image must be less than 5MB'
+    formData.value.photos[index] = null
+    photoPreviews.value[index] = ''
+    // Reset the input
+    target.value = ''
+    return
+  }
+
+  // Store file and create preview
+  formData.value.photos[index] = file
+  
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    if (e.target?.result) {
+      photoPreviews.value[index] = e.target.result as string
+    }
+  }
+  reader.onerror = () => {
+    photoError.value[index] = 'Failed to read image file'
+    formData.value.photos[index] = null
+    photoPreviews.value[index] = ''
+  }
+  reader.readAsDataURL(file)
+}
+
 function addPhotoField() {
-  formData.value.photoUrls.push('')
+  formData.value.photos.push(null)
+  photoPreviews.value.push('')
 }
 
 function removePhotoField(index: number) {
-  formData.value.photoUrls.splice(index, 1)
-  if (formData.value.photoUrls.length === 0) {
-    formData.value.photoUrls.push('')
+  formData.value.photos.splice(index, 1)
+  photoPreviews.value.splice(index, 1)
+  delete photoError.value[index]
+  
+  // Reset the file input for this index if it still exists
+  const input = document.getElementById(`photo-${index}`) as HTMLInputElement
+  if (input) {
+    input.value = ''
   }
+  
+  // Ensure at least one field exists
+  if (formData.value.photos.length === 0) {
+    formData.value.photos.push(null)
+    photoPreviews.value.push('')
+  }
+}
+
+// Convert file to base64 data URL
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
 
 function addAvailabilityWindow() {
@@ -408,18 +505,24 @@ async function handleSubmit() {
       throw new Error('Invalid listing type')
     }
 
-    // Step 3: Add photos if provided
-    const validPhotos = formData.value.photoUrls.filter(url => url.trim() !== '')
+    // Step 3: Add photos (required - convert files to base64 data URLs)
+    const validPhotos = formData.value.photos.filter(photo => photo !== null) as File[]
+    if (validPhotos.length === 0) {
+      throw new Error('At least one photo is required')
+    }
+    
     for (let i = 0; i < validPhotos.length; i++) {
       try {
+        // Convert file to base64 data URL
+        const base64Url = await fileToBase64(validPhotos[i])
         await itemListingAPI.addPhoto({
           item: itemId,
-          photoUrl: validPhotos[i].trim(),
+          photoUrl: base64Url,
           order: i,
         })
       } catch (photoError) {
         console.error(`Failed to add photo ${i + 1}:`, photoError)
-        // Don't fail the whole operation if photo fails
+        throw new Error(`Failed to upload photo ${i + 1}. Please try again.`)
       }
     }
 

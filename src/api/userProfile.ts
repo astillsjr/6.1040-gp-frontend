@@ -9,6 +9,7 @@ export interface UserProfile {
   createdAt: Date
   lenderScore: number
   borrowerScore: number
+  points?: number
 }
 
 export interface CreateProfileRequest {
