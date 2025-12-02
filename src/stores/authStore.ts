@@ -70,8 +70,8 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = null
 
       const response = await authAPI.login({ username: loginUsername, password })
-      accessToken.value = response.accessToken
-      refreshToken.value = response.refreshToken
+      accessToken.value = response.accessToken ?? null
+      refreshToken.value = response.refreshToken ?? null
       // Store the username from the login form
       username.value = loginUsername
       syncTokensToStorage()
