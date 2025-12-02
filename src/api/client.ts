@@ -84,16 +84,11 @@ async function refreshAccessTokenIfNeeded(): Promise<string | null> {
   if (isTokenExpired(accessToken)) {
     try {
       const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
-      // Build full URL - handle both absolute and relative baseURLs
-      let refreshUrl: string
-      if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
-        // Absolute URL: combine baseURL with path (refreshPath already has correct format)
-        const normalizedBase = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
-        refreshUrl = `${normalizedBase}/${refreshPath}`
-      } else {
-        // Relative URL (like /api): combine directly
-        refreshUrl = `${API_BASE_URL}${refreshPath}`
-      }
+      // Build full URL - API_BASE_URL now always ends with / for absolute URLs
+      // and buildApiPath returns paths without leading slashes for absolute URLs
+      const refreshUrl = API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
+        ? `${API_BASE_URL}${refreshPath}` // baseURL ends with /, path has no leading /
+        : `${API_BASE_URL}${refreshPath.startsWith('/') ? refreshPath : `/${refreshPath}`}` // relative URL handling
 
       const response = await axios.post(refreshUrl, { refreshToken })
       const { accessToken: newAccessToken } = response.data as { accessToken: string }
@@ -164,16 +159,11 @@ apiClient.interceptors.response.use(
           
           // Use the same buildApiPath helper for consistency
           const refreshPath = buildApiPath('UserAuthentication/refreshAccessToken')
-          // Build full URL - handle both absolute and relative baseURLs
-          let refreshUrl: string
-          if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
-            // Absolute URL: combine baseURL with path (refreshPath already has correct format)
-            const normalizedBase = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
-            refreshUrl = `${normalizedBase}/${refreshPath}`
-          } else {
-            // Relative URL (like /api): combine directly
-            refreshUrl = `${API_BASE_URL}${refreshPath}`
-          }
+          // Build full URL - API_BASE_URL now always ends with / for absolute URLs
+          // and buildApiPath returns paths without leading slashes for absolute URLs
+          const refreshUrl = API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
+            ? `${API_BASE_URL}${refreshPath}` // baseURL ends with /, path has no leading /
+            : `${API_BASE_URL}${refreshPath.startsWith('/') ? refreshPath : `/${refreshPath}`}` // relative URL handling
 
           const response = await axios.post(refreshUrl, {
             refreshToken,
