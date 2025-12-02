@@ -28,6 +28,7 @@
               placeholder="Enter your username"
               :disabled="authStore.isLoading"
               class="h-12 rounded-xl border-2 focus:border-primary"
+              @input="clearError"
             />
           </div>
           <div class="space-y-2">
@@ -40,10 +41,16 @@
               placeholder="Enter your password"
               :disabled="authStore.isLoading"
               class="h-12 rounded-xl border-2 focus:border-primary"
+              @input="clearError"
             />
           </div>
-          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20">
-            {{ authStore.error }}
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20 flex items-start gap-2">
+            <span class="text-lg">⚠️</span>
+            <div>
+              <p class="font-semibold mb-1">Login Failed</p>
+              <p>{{ authStore.error }}</p>
+              <p class="mt-2 text-xs opacity-90">Please check your username and password, or <router-link to="/register" class="underline font-semibold">create a new account</router-link> if you don't have one.</p>
+            </div>
           </div>
           <Button
             type="submit"
@@ -78,7 +85,17 @@ const authStore = useAuthStore()
 const username = ref('')
 const password = ref('')
 
+// Clear error when user starts typing
+const clearError = () => {
+  if (authStore.error) {
+    authStore.error = null
+  }
+}
+
 const handleLogin = async () => {
+  // Clear any previous errors
+  authStore.error = null
+  
   const result = await authStore.login(username.value, password.value)
 
   if (result.success) {
@@ -86,7 +103,7 @@ const handleLogin = async () => {
     const redirect = (route.query.redirect as string) || '/items'
     router.push(redirect)
   }
-  // Error is handled by authStore.authError
+  // Error is handled by authStore.error and displayed in the template
 }
 </script>
 

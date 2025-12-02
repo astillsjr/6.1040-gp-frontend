@@ -79,9 +79,13 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true }
     } catch (err) {
-      const axiosError = err as AxiosError<{ error?: string }>
+      const axiosError = err as AxiosError<{ error?: string; message?: string }>
+      // Extract error message from backend response
       const errorMessage =
-        axiosError.response?.data?.error || axiosError.message || 'Login failed'
+        axiosError.response?.data?.error ||
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        'Invalid username or password. Please try again or create a new account.'
       error.value = errorMessage
       return { success: false, error: errorMessage }
     } finally {

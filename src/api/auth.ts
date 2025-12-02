@@ -19,8 +19,10 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
+  user?: string
+  accessToken?: string
+  refreshToken?: string
+  error?: string
 }
 
 export interface RefreshTokenRequest {
@@ -67,7 +69,16 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     buildApiPath('UserAuthentication/login'),
     data
   )
-  return extractData(response)
+  const result = extractData(response)
+  // Check if the response contains an error field (backend returns 200 with error)
+  if (result.error) {
+    throw new Error(result.error)
+  }
+  // Validate that we have the required fields
+  if (!result.accessToken || !result.refreshToken) {
+    throw new Error('Invalid response from server: missing tokens')
+  }
+  return result
 }
 
 export async function refreshAccessToken(
