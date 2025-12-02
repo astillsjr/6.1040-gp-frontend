@@ -2,7 +2,14 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 
 // Get API base URL from environment or default to /api for local dev
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+
+// Normalize API_BASE_URL: for absolute URLs, ensure it ends with /
+// This ensures axios combines paths correctly (baseURL + path)
+const isAbsoluteUrl = rawApiBaseUrl.startsWith('http://') || rawApiBaseUrl.startsWith('https://')
+const API_BASE_URL = isAbsoluteUrl && !rawApiBaseUrl.endsWith('/')
+  ? `${rawApiBaseUrl}/`
+  : rawApiBaseUrl
 
 // Helper function to build API endpoint paths
 // Handles cases where API_BASE_URL may or may not include /api
@@ -11,26 +18,23 @@ export function buildApiPath(endpoint: string): string {
   // Remove leading slash from endpoint if present
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
 
-  // Check if API_BASE_URL is an absolute URL (starts with http:// or https://)
-  const isAbsoluteUrl = API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
-
-  // Normalize API_BASE_URL (remove trailing slash if present)
+  // Normalize API_BASE_URL (remove trailing slash if present for comparison)
   const normalizedBase = API_BASE_URL.endsWith('/')
     ? API_BASE_URL.slice(0, -1)
     : API_BASE_URL
 
-  // If API_BASE_URL ends with /api (with or without trailing slash), don't add /api again
+  // If API_BASE_URL ends with /api, don't add /api again
+  // Since baseURL now always ends with / for absolute URLs, return path without leading slash
   if (normalizedBase.endsWith('/api')) {
-    // For absolute URLs, return path without leading slash (axios will combine correctly)
-    // For relative URLs, return path with leading slash
-    return isAbsoluteUrl ? cleanEndpoint : `/${cleanEndpoint}`
+    // Return path without leading slash - axios will combine with baseURL ending in /
+    return cleanEndpoint
   }
-  // If API_BASE_URL is just /api (local dev), use as is
+  // If API_BASE_URL is just /api (local dev), use as is with leading slash
   if (normalizedBase === '/api') {
     return `/${cleanEndpoint}`
   }
   // Otherwise, add /api prefix
-  // For absolute URLs, return path without leading slash
+  // For absolute URLs (baseURL ends with /), return path without leading slash
   // For relative URLs, return path with leading slash
   return isAbsoluteUrl ? `api/${cleanEndpoint}` : `/api/${cleanEndpoint}`
 }
@@ -38,7 +42,8 @@ export function buildApiPath(endpoint: string): string {
 // Log API configuration for debugging
 console.log('🔧 API Configuration:', {
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-  resolved: API_BASE_URL,
+  raw: rawApiBaseUrl,
+  normalized: API_BASE_URL,
   mode: import.meta.env.MODE,
   isProduction: import.meta.env.PROD,
 })
