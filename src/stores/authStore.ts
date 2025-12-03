@@ -1,6 +1,6 @@
 // Pinia store for authentication
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import * as authAPI from '@/api/auth'
 import { getUserIdFromToken } from '@/utils/jwt'
 import type { AxiosError } from 'axios'
@@ -14,6 +14,8 @@ export const useAuthStore = defineStore('auth', () => {
   const email = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const sseConnection = ref<EventSource | null>(null)
+  const isSSEConnected = ref(false)
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
@@ -40,6 +42,120 @@ export const useAuthStore = defineStore('auth', () => {
   // Helper: Update userId from token
   function updateUserIdFromToken() {
     userId.value = getUserIdFromToken(accessToken.value)
+  }
+
+  // Helper: Build SSE URL
+  function buildSSEUrl(token: string): string {
+    const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+    const isAbsoluteUrl = rawApiBaseUrl.startsWith('http://') || rawApiBaseUrl.startsWith('https://')
+    
+    // For SSE, we need the full URL
+    if (isAbsoluteUrl) {
+      const base = rawApiBaseUrl.endsWith('/') ? rawApiBaseUrl.slice(0, -1) : rawApiBaseUrl
+      const baseWithoutApi = base.endsWith('/api') ? base.slice(0, -4) : base
+      return `${baseWithoutApi}/api/events/stream?accessToken=${token}`
+    } else {
+      // Local development
+      return `/api/events/stream?accessToken=${token}`
+    }
+  }
+
+  // SSE Connection Management
+  async function startSSEConnection() {
+    if (!accessToken.value || sseConnection.value) {
+      return
+    }
+
+    try {
+      const url = buildSSEUrl(accessToken.value)
+      console.log('🔌 Starting SSE connection:', url)
+      
+      const eventSource = new EventSource(url)
+      
+      eventSource.addEventListener('connected', (event) => {
+        const data = JSON.parse(event.data)
+        console.log('✅ SSE connected:', data.message)
+        isSSEConnected.value = true
+      })
+
+      eventSource.addEventListener('notification', async (event) => {
+        const data = JSON.parse(event.data)
+        console.log('📬 Notification received:', data)
+        // Route to notification store (general notifications only)
+        const { useNotificationStore } = await import('@/stores/notificationStore')
+        const notificationStore = useNotificationStore()
+        notificationStore.handleNotification(data.notification)
+      })
+
+      eventSource.addEventListener('request_update', async (event) => {
+        const data = JSON.parse(event.data)
+        console.log('📋 Request update received:', data)
+        // Route to request store
+        const { useRequestStore } = await import('@/stores/requestStore')
+        const requestStore = useRequestStore()
+        requestStore.handleRequestUpdate(data.request)
+      })
+
+      eventSource.addEventListener('transaction_update', async (event) => {
+        const data = JSON.parse(event.data)
+        console.log('💳 Transaction update received:', data)
+        // Route to transaction store
+        const { useTransactionStore } = await import('@/stores/transactionStore')
+        const transactionStore = useTransactionStore()
+        transactionStore.handleTransactionUpdate(data.transaction)
+      })
+
+      eventSource.addEventListener('message', async (event) => {
+        const data = JSON.parse(event.data)
+        console.log('💬 Message received:', data)
+        // Route to message store
+        const { useMessageStore } = await import('@/stores/messageStore')
+        const messageStore = useMessageStore()
+        messageStore.handleMessage(data.message)
+      })
+
+      eventSource.addEventListener('heartbeat', () => {
+        // Connection is alive
+        isSSEConnected.value = true
+      })
+
+      eventSource.addEventListener('error', (event) => {
+        // Check if event.data exists before parsing
+        // Connection errors (like 401) may not have event.data
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data)
+            console.error('❌ SSE error:', data.message || data)
+          } catch (e) {
+            console.error('❌ SSE error (invalid JSON):', event.data)
+          }
+        } else {
+          // Connection error - event.data is undefined
+          // This is handled by eventSource.onerror below
+          console.error('❌ SSE error event (no data)')
+        }
+      })
+
+      eventSource.onerror = (error) => {
+        console.error('❌ EventSource connection error:', error)
+        isSSEConnected.value = false
+        // Close and cleanup
+        stopSSEConnection()
+      }
+
+      sseConnection.value = eventSource
+    } catch (error) {
+      console.error('❌ Failed to start SSE connection:', error)
+    }
+  }
+
+  function stopSSEConnection() {
+    if (sseConnection.value) {
+      console.log('🔌 Stopping SSE connection')
+      sseConnection.value.close()
+      sseConnection.value = null
+      isSSEConnected.value = false
+    }
   }
 
   // Actions
@@ -76,6 +192,7 @@ export const useAuthStore = defineStore('auth', () => {
       username.value = loginUsername
       syncTokensToStorage()
       updateUserIdFromToken()
+      startSSEConnection()
 
       return { success: true }
     } catch (err) {
@@ -113,6 +230,7 @@ export const useAuthStore = defineStore('auth', () => {
       username.value = registerUsername
       syncTokensToStorage()
       updateUserIdFromToken()
+      startSSEConnection()
 
       return { success: true, user: response.user }
     } catch (err) {
@@ -166,6 +284,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Logout error:', err)
       // Continue with logout even if API call fails
     } finally {
+      stopSSEConnection()
       clearAuth()
       isLoading.value = false
     }
@@ -183,6 +302,9 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = response.accessToken
       syncTokensToStorage()
       updateUserIdFromToken()
+      // Reconnect SSE with new token
+      stopSSEConnection()
+      startSSEConnection()
       return true
     } catch (err) {
       console.error('Token refresh failed:', err)
@@ -192,6 +314,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function clearAuth() {
+    stopSSEConnection()
     accessToken.value = null
     refreshToken.value = null
     userId.value = null
@@ -216,6 +339,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Watch for token changes to manage SSE connection
+  watch(accessToken, (newToken, oldToken) => {
+    if (newToken && !oldToken) {
+      // Token was set (login/register)
+      startSSEConnection()
+    } else if (newToken && oldToken && newToken !== oldToken) {
+      // Token was refreshed
+      stopSSEConnection()
+      startSSEConnection()
+    } else if (!newToken && oldToken) {
+      // Token was cleared (logout)
+      stopSSEConnection()
+    }
+  })
+
   return {
     // State
     accessToken,
@@ -225,6 +363,8 @@ export const useAuthStore = defineStore('auth', () => {
     email,
     isLoading,
     error,
+    sseConnection,
+    isSSEConnected,
     // Getters
     isAuthenticated,
     // Actions
@@ -237,6 +377,9 @@ export const useAuthStore = defineStore('auth', () => {
     // Helper methods
     getCurrentUserId,
     getTokens,
+    // SSE methods
+    startSSEConnection,
+    stopSSEConnection,
   }
 })
 

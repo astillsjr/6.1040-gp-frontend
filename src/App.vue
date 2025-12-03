@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <NavBar />
+    <NotificationCard />
     <main class="main-content">
       <router-view />
     </main>
@@ -9,6 +10,7 @@
 
 <script setup>
 import NavBar from './components/NavBar.vue'
+import NotificationCard from './components/NotificationCard.vue'
 </script>
 
 <style scoped>

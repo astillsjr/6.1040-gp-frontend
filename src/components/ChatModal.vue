@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useMessageStore, type Message } from '@/stores/messageStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Button, Textarea } from '@/components/ui'
@@ -193,6 +193,20 @@ watch(() => props.isOpen, (isOpen) => {
     })
   }
 })
+
+// Watch for new messages from SSE and add them to the conversation
+// The messageStore.handleMessage() is called by SSE, but we need to integrate
+// backend messages into the local conversation format
+watch(
+  () => messageStore.conversations,
+  () => {
+    // When conversations update (from SSE or local), scroll to bottom
+    nextTick(() => {
+      scrollToBottom()
+    })
+  },
+  { deep: true }
+)
 
 onMounted(() => {
   if (props.isOpen) {

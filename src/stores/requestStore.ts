@@ -150,6 +150,54 @@ export const useRequestStore = defineStore('request', () => {
     }
   }
 
+  // Handle SSE request updates
+  function handleRequestUpdate(updatedRequest: ItemRequest) {
+    // Update in incoming requests if it exists
+    const incomingIndex = incomingRequests.value.findIndex(
+      (r) => r._id === updatedRequest._id
+    )
+    if (incomingIndex !== -1) {
+      // Update the request, preserving itemDetails
+      const existing = incomingRequests.value[incomingIndex]
+      incomingRequests.value[incomingIndex] = {
+        ...updatedRequest,
+        itemDetails: existing.itemDetails,
+      }
+    }
+
+    // Update in outgoing requests if it exists
+    const outgoingIndex = outgoingRequests.value.findIndex(
+      (r) => r._id === updatedRequest._id
+    )
+    if (outgoingIndex !== -1) {
+      // Update the request, preserving itemDetails
+      const existing = outgoingRequests.value[outgoingIndex]
+      outgoingRequests.value[outgoingIndex] = {
+        ...updatedRequest,
+        itemDetails: existing.itemDetails,
+      }
+
+      // If request was accepted, show notification
+      if (updatedRequest.status === 'ACCEPTED') {
+        import('@/stores/notificationStore').then(({ useNotificationStore }) => {
+          const notificationStore = useNotificationStore()
+          notificationStore.showRequestAcceptedNotification(updatedRequest, existing.itemDetails)
+        })
+      }
+    } else if (updatedRequest.status === 'ACCEPTED') {
+      // Request not in our list yet, but it was accepted - fetch item details and show notification
+      itemsAPI.getItemById({ item: updatedRequest.item })
+        .then(async (itemDetails) => {
+          const { useNotificationStore } = await import('@/stores/notificationStore')
+          const notificationStore = useNotificationStore()
+          notificationStore.showRequestAcceptedNotification(updatedRequest, itemDetails)
+        })
+        .catch((err) => {
+          console.error('Failed to fetch item details for notification:', err)
+        })
+    }
+  }
+
   return {
     incomingRequests,
     outgoingRequests,
@@ -160,6 +208,7 @@ export const useRequestStore = defineStore('request', () => {
     acceptRequest,
     rejectRequest,
     cancelRequest,
+    handleRequestUpdate,
   }
 })
 
