@@ -128,6 +128,7 @@ interface Props {
   itemId: string
   itemTitle: string
   itemImage: string | null
+  transactionId?: string | null
 }
 
 const props = defineProps<Props>()
@@ -177,19 +178,29 @@ watch(messages, () => {
   })
 }, { deep: true })
 
-// Scroll to bottom when modal opens
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen) {
+// Scroll to bottom when modal opens and load conversation from backend
+watch(() => props.isOpen, async (isOpen) => {
+  if (isOpen && currentUserId.value) {
+    // Load conversation from backend
+    try {
+      await messageStore.loadConversationFromBackend(
+        currentUserId.value,
+        props.otherUserId,
+        props.itemId,
+        props.transactionId || null
+      )
+    } catch (err) {
+      console.error('Failed to load conversation from backend:', err)
+    }
+    
     nextTick(() => {
       scrollToBottom()
       // Mark messages as read when opening
-      if (currentUserId.value) {
-        messageStore.markAsRead(
-          currentUserId.value,
-          props.otherUserId,
-          props.itemId
-        )
-      }
+      messageStore.markAsRead(
+        currentUserId.value,
+        props.otherUserId,
+        props.itemId
+      )
     })
   }
 })
@@ -242,11 +253,12 @@ async function handleSendMessage() {
 
   isSending.value = true
   try {
-    messageStore.sendMessage(
+    await messageStore.sendMessage(
       currentUserId.value,
       props.otherUserId,
       props.itemId,
-      messageInput.value
+      messageInput.value,
+      props.transactionId || null
     )
     messageInput.value = ''
     await nextTick()
