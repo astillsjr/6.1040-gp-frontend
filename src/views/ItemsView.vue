@@ -32,7 +32,7 @@
         </Button>
 
         <!-- Filters -->
-        <div v-if="showFilters" class="grid grid-cols-2 gap-4 mb-4 p-4 bg-muted/50 rounded-xl">
+        <div v-if="showFilters" class="grid grid-cols-3 gap-4 mb-4 p-4 bg-muted/50 rounded-xl">
           <div>
             <label class="text-sm font-medium text-foreground mb-2 block">Category</label>
             <Select :model-value="selectedCategory" @update:model-value="selectedCategory = $event">
@@ -55,6 +55,14 @@
                 :value="dorm"
                 :label="dorm"
               />
+            </Select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-foreground mb-2 block">Type</label>
+            <Select :model-value="selectedListingType" @update:model-value="selectedListingType = $event">
+              <SelectItem value="all" label="All Types" />
+              <SelectItem value="BORROW" label="Borrow (temporary)" />
+              <SelectItem value="TRANSFER" label="Transfer (permanent)" />
             </Select>
           </div>
         </div>
@@ -124,6 +132,7 @@ const itemStore = useItemStore()
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const selectedDorm = ref('all')
+const selectedListingType = ref('all')
 const showFilters = ref(false)
 
 const categories = ['All', 'Tools', 'Electronics', 'Professional Attire', 'Craft Materials', 'Photography']
@@ -136,10 +145,11 @@ onMounted(async () => {
 
 // Watch filters and refetch (with debounce for search)
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
-watch([selectedCategory, selectedDorm], async () => {
+watch([selectedCategory, selectedDorm, selectedListingType], async () => {
   await itemStore.fetchItems({
     category: selectedCategory.value,
     dorm: selectedDorm.value,
+    listingType: selectedListingType.value,
     searchQuery: searchQuery.value,
   })
 })
@@ -153,6 +163,7 @@ watch(searchQuery, () => {
     await itemStore.fetchItems({
       category: selectedCategory.value,
       dorm: selectedDorm.value,
+      listingType: selectedListingType.value,
       searchQuery: searchQuery.value,
     })
   }, 300) // 300ms debounce
@@ -168,7 +179,9 @@ const filteredItems = computed(() => {
     const matchesCategory =
       selectedCategory.value === 'all' || item.category === selectedCategory.value
     const matchesDorm = selectedDorm.value === 'all' || item.dorm === selectedDorm.value
-    return matchesSearch && matchesCategory && matchesDorm
+    const matchesListingType =
+      selectedListingType.value === 'all' || item.listingType === selectedListingType.value
+    return matchesSearch && matchesCategory && matchesDorm && matchesListingType
   })
 })
 
@@ -176,6 +189,7 @@ function clearFilters() {
   searchQuery.value = ''
   selectedCategory.value = 'all'
   selectedDorm.value = 'all'
+  selectedListingType.value = 'all'
 }
 
 function handleItemClick(item: DisplayItem) {

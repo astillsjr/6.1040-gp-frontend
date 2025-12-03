@@ -149,6 +149,7 @@ export const useItemStore = defineStore('item', () => {
   async function fetchItems(filters?: {
     category?: string
     dorm?: string
+    listingType?: string
     searchQuery?: string
   }) {
     try {
@@ -186,6 +187,15 @@ export const useItemStore = defineStore('item', () => {
               ) {
                 return null
               }
+
+              // Apply listing type filter if specified
+              if (
+                filters?.listingType &&
+                filters.listingType !== 'all' &&
+                listing.type !== filters.listingType
+              ) {
+                return null
+              }
               return { item, listing }
             }
             return null
@@ -213,6 +223,12 @@ export const useItemStore = defineStore('item', () => {
       if (filters?.category && filters.category !== 'all') {
         filtered = filtered.filter(
           (item) => item.category === filters.category
+        )
+      }
+
+      if (filters?.listingType && filters.listingType !== 'all') {
+        filtered = filtered.filter(
+          (item) => item.listingType === filters.listingType
         )
       }
 
