@@ -80,7 +80,7 @@
                 <Select
                   id="dorm"
                   :model-value="formData.dorm"
-                  @update:model-value="(value) => { formData.dorm = value; dormError.value = '' }"
+                  @update:model-value="handleDormChange"
                   required
                   :disabled="userProfileStore.isLoading"
                   :class="{ 'border-destructive': dormError }"
@@ -146,7 +146,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useUserProfileStore } from '@/stores/userProfileStore'
-import { Button, Input, Label, Textarea, Card, CardHeader, CardTitle, CardDescription, CardContent, Select, SelectItem } from '@/components/ui'
+import { Button, Label, Textarea, Card, CardHeader, CardTitle, CardDescription, CardContent, Select, SelectItem } from '@/components/ui'
 import { Star, Trophy } from 'lucide-vue-next'
 import { VALID_DORMS } from '@/utils/validDorms'
 
@@ -197,6 +197,11 @@ watch(
   },
   { immediate: true }
 )
+
+function handleDormChange(value: string) {
+  formData.value.dorm = value
+  dormError.value = ''
+}
 
 async function loadProfile() {
   if (!authStore.userId) {

@@ -91,7 +91,7 @@
           </div>
           <h3 class="text-xl font-semibold text-foreground mb-3">Earn Rewards</h3>
           <p class="text-sm text-muted-foreground leading-relaxed">
-            Get rewarded for lending and helping the community
+            Get rewarded for lending and helping the community (once you have 500 points email localloop@mit.edu for rewards!)
           </p>
         </Card>
       </div>
@@ -110,7 +110,7 @@
             <p class="text-base text-muted-foreground font-medium">Active Users</p>
           </div>
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">TBD</div>
+            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">{{ displaySuccessfulBorrowsCount() }}</div>
             <p class="text-base text-muted-foreground font-medium">Successful Borrows</p>
           </div>
         </div>
@@ -153,10 +153,12 @@ import { useItemStore } from '@/stores/itemStore'
 import { Card } from '@/components/ui'
 import { Search, Plus, Package, MessageSquare, Star } from 'lucide-vue-next'
 import { getUserCount } from '@/api/auth'
+import { getSuccessfulBorrowsCount } from '@/api/itemTransaction'
 
 const authStore = useAuthStore()
 const itemStore = useItemStore()
 const userCount = ref<number | null>(null)
+const successfulBorrowsCount = ref<number | null>(null)
 const isLoading = ref(true)
 
 // Use the itemStore's items count to match what's shown on the browse items page
@@ -190,6 +192,18 @@ onMounted(async () => {
     isLoading.value = false
   }
 
+  // Fetch successful borrows count
+  try {
+    console.log('📊 Fetching successful borrows count...')
+    const count = await getSuccessfulBorrowsCount()
+    console.log('✅ Successful borrows count received:', count)
+    successfulBorrowsCount.value = count
+  } catch (error: any) {
+    console.error('❌ Failed to fetch successful borrows count:', error)
+    // Set to 0 on error so we show something instead of "TBD"
+    successfulBorrowsCount.value = 0
+  }
+
   // Fetch items to populate the count (same data source as browse items page)
   try {
     await itemStore.fetchItems()
@@ -212,5 +226,12 @@ const displayItemCount = () => {
     return '...'
   }
   return itemCount.value.toLocaleString()
+}
+
+const displaySuccessfulBorrowsCount = () => {
+  if (successfulBorrowsCount.value === null) {
+    return '...'
+  }
+  return successfulBorrowsCount.value.toLocaleString()
 }
 </script>
