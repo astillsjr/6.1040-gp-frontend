@@ -114,7 +114,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { useMessageStore, type Message } from '@/stores/messageStore'
+import { useMessageStore } from '@/stores/messageStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Button, Textarea } from '@/components/ui'
 import { X, Send, MessageCircle } from 'lucide-vue-next'

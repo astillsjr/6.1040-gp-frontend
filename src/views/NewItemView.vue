@@ -126,7 +126,7 @@
             <!-- Photo Upload (required) -->
             <div class="space-y-2">
               <Label>Photos <span class="text-destructive">*</span></Label>
-              <div v-for="(photo, index) in formData.photos" :key="index" class="space-y-2">
+              <div v-for="(_, index) in formData.photos" :key="index" class="space-y-2">
                 <div class="flex gap-2 items-start">
                   <div class="flex-1">
                     <input
