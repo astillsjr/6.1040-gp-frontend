@@ -80,7 +80,7 @@
                 <Select
                   id="dorm"
                   :model-value="formData.dorm"
-                  @update:model-value="(value: string) => { formData.dorm = value; dormError.value = '' }"
+                  @update:model-value="handleDormChange"
                   required
                   :disabled="userProfileStore.isLoading"
                   :class="{ 'border-destructive': dormError }"
@@ -197,6 +197,11 @@ watch(
   },
   { immediate: true }
 )
+
+function handleDormChange(value: string) {
+  formData.value.dorm = value
+  dormError.value = ''
+}
 
 async function loadProfile() {
   if (!authStore.userId) {
