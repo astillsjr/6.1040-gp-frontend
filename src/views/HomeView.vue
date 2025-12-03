@@ -147,17 +147,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useItemStore } from '@/stores/itemStore'
 import { Card } from '@/components/ui'
 import { Search, Plus, Package, MessageSquare, Star } from 'lucide-vue-next'
 import { getUserCount } from '@/api/auth'
-import { getAvailableListingCount } from '@/api/itemListing'
 
 const authStore = useAuthStore()
+const itemStore = useItemStore()
 const userCount = ref<number | null>(null)
-const itemCount = ref<number | null>(null)
 const isLoading = ref(true)
+
+// Use the itemStore's items count to match what's shown on the browse items page
+const itemCount = computed(() => itemStore.items.length)
 
 onMounted(async () => {
   // Set a maximum wait time - if it takes longer, show a fallback
@@ -167,14 +170,10 @@ onMounted(async () => {
       console.warn('⚠️ User count fetch taking too long, showing fallback')
       userCount.value = 0
     }
-    if (itemCount.value === null) {
-      console.warn('⚠️ Item count fetch taking too long, showing fallback')
-      itemCount.value = 0
-    }
     isLoading.value = false
   }, maxWaitTime)
 
-  // Fetch both counts in parallel
+  // Fetch user count
   try {
     console.log('📊 Fetching user count...')
     const count = await getUserCount()
@@ -187,16 +186,15 @@ onMounted(async () => {
     console.error('Error response:', error.response?.data)
     // Set to 0 on error so we show something instead of "..."
     userCount.value = 0
-  }
-
-  try {
-    const count = await getAvailableListingCount()
-    itemCount.value = count
-  } catch (error: any) {
-    console.error('❌ Failed to fetch item count:', error)
-    itemCount.value = 0
   } finally {
     isLoading.value = false
+  }
+
+  // Fetch items to populate the count (same data source as browse items page)
+  try {
+    await itemStore.fetchItems()
+  } catch (error: any) {
+    console.error('❌ Failed to fetch items:', error)
   }
 })
 
@@ -210,11 +208,9 @@ const displayUserCount = () => {
 }
 
 const displayItemCount = () => {
-  if (isLoading.value && itemCount.value === null) {
+  if (itemStore.isLoading && itemCount.value === 0) {
     return '...'
   }
-  // If we have a count, show it; otherwise show 0
-  const count = itemCount.value ?? 0
-  return count.toLocaleString()
+  return itemCount.value.toLocaleString()
 }
 </script>

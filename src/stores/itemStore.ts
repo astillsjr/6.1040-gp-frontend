@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as itemAPI from '@/api/items'
 import * as itemListingAPI from '@/api/itemListing'
+import * as itemRequestingAPI from '@/api/itemRequesting'
 import * as userProfileAPI from '@/api/userProfile'
 import type { Item as BackendItem } from '@/api/items'
 import type { Listing } from '@/api/itemListing'
@@ -88,6 +89,21 @@ export const useItemStore = defineStore('item', () => {
     }
   }
 
+  // Helper: Check if an item is matched (has an accepted request)
+  // An item is considered "matched" if it has an accepted request, which means
+  // someone has already claimed it and a transaction has been created
+  async function isItemMatched(itemId: string): Promise<boolean> {
+    try {
+      const requests = await itemRequestingAPI.getRequestsByItem({ item: itemId })
+      // Check if any request has status ACCEPTED
+      return requests.some((req) => req.status === 'ACCEPTED')
+    } catch (err) {
+      // If we can't fetch requests, assume item is not matched to be safe
+      console.error(`Failed to check if item ${itemId} is matched:`, err)
+      return false
+    }
+  }
+
   // Helper: Convert backend item to display item
   async function convertToDisplayItem(
     backendItem: BackendItem,
@@ -143,7 +159,7 @@ export const useItemStore = defineStore('item', () => {
       const allItemsResponse = await itemAPI.getAllItems()
       const allItems = allItemsResponse.items
 
-      // Check each item to see if it has an available listing
+      // Check each item to see if it has an available listing and is not matched
       // Note: We check each item individually since listing response doesn't include item ID
       const itemsWithListings = await Promise.all(
         allItems.map(async (item) => {
@@ -155,6 +171,13 @@ export const useItemStore = defineStore('item', () => {
 
             // Only include if listing exists and is available
             if (listing && listing.status === 'AVAILABLE') {
+              // Check if item is already matched (has accepted request)
+              const matched = await isItemMatched(item._id)
+              if (matched) {
+                // Item is matched, exclude it from browse page
+                return null
+              }
+
               // Apply dorm filter if specified
               if (
                 filters?.dorm &&
