@@ -194,6 +194,20 @@ watch(() => props.isOpen, (isOpen) => {
   }
 })
 
+// Watch for new messages from SSE and add them to the conversation
+// The messageStore.handleMessage() is called by SSE, but we need to integrate
+// backend messages into the local conversation format
+watch(
+  () => messageStore.conversations,
+  () => {
+    // When conversations update (from SSE or local), scroll to bottom
+    nextTick(() => {
+      scrollToBottom()
+    })
+  },
+  { deep: true }
+)
+
 onMounted(() => {
   if (props.isOpen) {
     scrollToBottom()

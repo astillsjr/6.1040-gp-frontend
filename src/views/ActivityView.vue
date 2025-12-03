@@ -233,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRequestStore } from '@/stores/requestStore'
 import { useTransactionStore } from '@/stores/transactionStore'
@@ -723,6 +723,23 @@ onMounted(async () => {
   }
 })
 
+// Watch for changes in requests/transactions and automatically update matches
+// SSE will update the stores, and this watcher will keep matches in sync
+watch(
+  [
+    () => requestStore.incomingRequests,
+    () => requestStore.outgoingRequests,
+    () => transactionStore.transactions,
+  ],
+  () => {
+    // Debounce matches update to avoid excessive calls
+    if (!loadingMatches.value) {
+      fetchMatches()
+    }
+  },
+  { deep: true }
+)
+
 async function fetchUserListings() {
   if (!authStore.userId) return
 
@@ -851,12 +868,11 @@ async function handleAction(action: { type: string; id: string; action: string }
 async function handleAcceptRequest(requestId: string) {
   try {
     await requestStore.acceptRequest(requestId)
+    // SSE will automatically update:
+    // - requestStore.incomingRequests (via handleRequestUpdate)
+    // - transactionStore.transactions (via handleTransactionUpdate)
+    // - matches will update reactively via watcher
     alert('Request accepted! A transaction has been created.')
-    await Promise.all([
-      requestStore.fetchIncomingRequests(authStore.userId!),
-      transactionStore.fetchTransactions(authStore.userId!),
-    ])
-    await fetchMatches()
   } catch (err) {
     alert('Failed to accept request. Please try again.')
   }
@@ -883,9 +899,9 @@ async function handleCancelRequest(requestId: string) {
 async function handleMarkPickedUp(transactionId: string) {
   try {
     await transactionStore.markPickedUp(transactionId)
+    // SSE will automatically update transactionStore.transactions
+    // matches will update reactively via watcher
     alert('Pickup confirmed!')
-    await transactionStore.fetchTransactions(authStore.userId!)
-    await fetchMatches()
   } catch (err) {
     alert('Failed to confirm pickup. Please try again.')
   }
@@ -894,9 +910,9 @@ async function handleMarkPickedUp(transactionId: string) {
 async function handleMarkReturned(transactionId: string) {
   try {
     await transactionStore.markReturned(transactionId)
+    // SSE will automatically update transactionStore.transactions
+    // matches will update reactively via watcher
     alert('Marked as returned! Waiting for owner confirmation.')
-    await transactionStore.fetchTransactions(authStore.userId!)
-    await fetchMatches()
   } catch (err) {
     alert('Failed to mark as returned. Please try again.')
   }
@@ -905,9 +921,9 @@ async function handleMarkReturned(transactionId: string) {
 async function handleConfirmReturn(transactionId: string) {
   try {
     await transactionStore.confirmReturn(transactionId)
+    // SSE will automatically update transactionStore.transactions
+    // matches will update reactively via watcher
     alert('Return confirmed! Transaction completed.')
-    await transactionStore.fetchTransactions(authStore.userId!)
-    await fetchMatches()
   } catch (err) {
     alert('Failed to confirm return. Please try again.')
   }

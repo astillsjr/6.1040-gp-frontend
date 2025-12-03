@@ -16,6 +16,11 @@ app.use(router)
 const authStore = useAuthStore()
 authStore.initialize()
 
+// Start SSE connection if user is already authenticated
+if (authStore.isAuthenticated) {
+  authStore.startSSEConnection()
+}
+
 app.mount('#app')
 
 // Check backend connection on app start (only in development)

@@ -168,6 +168,43 @@ export const useMessageStore = defineStore('message', () => {
     ).length
   }
 
+  // Handle SSE message updates from backend
+  // Backend message format: { _id, conversation, author, content, createdAt, readAt }
+  // Note: This assumes the backend message system might be different from local storage
+  // For now, we'll show a notification. You may need to fetch conversation details
+  // to properly integrate with the local message store format
+  function handleMessage(backendMessage: any) {
+    console.log('Backend message received:', backendMessage)
+    
+    // Show notification for new message
+    // The notification store will handle displaying it
+    import('@/stores/notificationStore').then(({ useNotificationStore }) => {
+      const notificationStore = useNotificationStore()
+      notificationStore.showMessageNotification(backendMessage)
+    })
+
+    // TODO: If you have an API to fetch conversation details (itemId, participants),
+    // you could integrate it into the local message store like this:
+    // 
+    // fetchConversationDetails(backendMessage.conversation)
+    //   .then((details) => {
+    //     const currentUserId = getCurrentUserId() // from authStore
+    //     const otherUserId = details.participants.find(id => id !== currentUserId)
+    //     const message: Message = {
+    //       id: backendMessage._id,
+    //       fromUserId: backendMessage.author,
+    //       toUserId: currentUserId,
+    //       content: backendMessage.content,
+    //       timestamp: new Date(backendMessage.createdAt),
+    //       read: backendMessage.readAt !== null,
+    //     }
+    //     const conversation = getConversation(currentUserId, otherUserId, details.itemId)
+    //     conversation.messages.push(message)
+    //     conversation.lastMessageTime = new Date(backendMessage.createdAt)
+    //     saveConversations()
+    //   })
+  }
+
   return {
     conversations,
     loadConversations,
@@ -177,6 +214,7 @@ export const useMessageStore = defineStore('message', () => {
     markAsRead,
     getUnreadCount,
     getConversationUnreadCount,
+    handleMessage,
   }
 })
 

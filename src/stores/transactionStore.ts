@@ -132,6 +132,56 @@ export const useTransactionStore = defineStore('transaction', () => {
     }
   }
 
+  // Handle SSE transaction updates
+  async function handleTransactionUpdate(updatedTransaction: ItemTransaction) {
+    const existingIndex = transactions.value.findIndex(
+      (t) => t._id === updatedTransaction._id
+    )
+
+    if (existingIndex !== -1) {
+      // Update existing transaction, preserving itemDetails and isLending
+      const existing = transactions.value[existingIndex]
+      transactions.value[existingIndex] = {
+        ...updatedTransaction,
+        itemDetails: existing.itemDetails,
+        isLending: existing.isLending,
+      }
+
+      // If status changed to PENDING_PICKUP, show notification to item owner
+      if (updatedTransaction.status === 'PENDING_PICKUP') {
+        const { useNotificationStore } = await import('@/stores/notificationStore')
+        const notificationStore = useNotificationStore()
+        notificationStore.showTransactionCreatedNotification(updatedTransaction, existing.itemDetails)
+      }
+    } else {
+      // New transaction - fetch item details and add it
+      try {
+        const itemDetails = await itemsAPI.getItemById({ item: updatedTransaction.item })
+        
+        // Get userId from authStore to determine isLending
+        const { useAuthStore } = await import('@/stores/authStore')
+        const authStore = useAuthStore()
+        const userId = authStore.getCurrentUserId()
+        const isLending = userId ? updatedTransaction.from === userId : false
+
+        transactions.value.push({
+          ...updatedTransaction,
+          itemDetails,
+          isLending,
+        })
+
+        // If transaction is PENDING_PICKUP, show notification to item owner
+        if (updatedTransaction.status === 'PENDING_PICKUP') {
+          const { useNotificationStore } = await import('@/stores/notificationStore')
+          const notificationStore = useNotificationStore()
+          notificationStore.showTransactionCreatedNotification(updatedTransaction, itemDetails)
+        }
+      } catch (err) {
+        console.error('Failed to fetch item details for transaction:', err)
+      }
+    }
+  }
+
   return {
     transactions,
     isLoading,
@@ -141,6 +191,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     markReturned,
     confirmReturn,
     cancelTransaction,
+    handleTransactionUpdate,
   }
 })
 
