@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as communicationAPI from '@/api/communication'
+import type { BackendMessage } from '@/api/communication'
 
 export interface Message {
   id: string
@@ -472,40 +473,107 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   // Handle SSE message updates from backend
-  // Backend message format: { _id, conversation, author, content, createdAt, readAt }
-  // Note: This assumes the backend message system might be different from local storage
-  // For now, we'll show a notification. You may need to fetch conversation details
-  // to properly integrate with the local message store format
-  function handleMessage(backendMessage: any) {
-    console.log('Backend message received:', backendMessage)
+  async function handleMessage(backendMessage: BackendMessage) {
+    console.log('💬 Backend message received via SSE:', backendMessage)
     
-    // Show notification for new message
-    // The notification store will handle displaying it
-    import('@/stores/notificationStore').then(({ useNotificationStore }) => {
+    // Show notification for new message (lazy import to avoid circular dependencies)
+    try {
+      const { useNotificationStore } = await import('@/stores/notificationStore')
       const notificationStore = useNotificationStore()
       notificationStore.showMessageNotification(backendMessage)
-    })
+    } catch (err) {
+      console.error('Failed to show message notification:', err)
+    }
 
-    // TODO: If you have an API to fetch conversation details (itemId, participants),
-    // you could integrate it into the local message store like this:
-    // 
-    // fetchConversationDetails(backendMessage.conversation)
-    //   .then((details) => {
-    //     const currentUserId = getCurrentUserId() // from authStore
-    //     const otherUserId = details.participants.find(id => id !== currentUserId)
-    //     const message: Message = {
-    //       id: backendMessage._id,
-    //       fromUserId: backendMessage.author,
-    //       toUserId: currentUserId,
-    //       content: backendMessage.content,
-    //       timestamp: new Date(backendMessage.createdAt),
-    //       read: backendMessage.readAt !== null,
-    //     }
-    //     const conversation = getConversation(currentUserId, otherUserId, details.itemId)
-    //     conversation.messages.push(message)
-    //     conversation.lastMessageTime = new Date(backendMessage.createdAt)
-    //     saveConversations()
-    //   })
+    // Get conversation details to find participants and transaction
+    try {
+      // Get current user ID from auth store first (needed for getConversation)
+      const { useAuthStore } = await import('@/stores/authStore')
+      const authStore = useAuthStore()
+      const currentUserId = authStore.userId
+
+      if (!currentUserId) {
+        console.warn('No current user ID, cannot process message')
+        return
+      }
+
+      // Use getConversationsByUser since _getConversation is unavailable
+      const backendConv = await communicationAPI.getConversation({
+        conversation: backendMessage.conversation,
+        user: currentUserId,
+      })
+
+      if (!backendConv) {
+        console.warn('Conversation not found for message:', backendMessage._id)
+        return
+      }
+
+      // Determine other user ID
+      const otherUserId =
+        backendConv.participant1 === currentUserId
+          ? backendConv.participant2
+          : backendConv.participant1
+
+      // Get transaction to find item ID
+      const { useTransactionStore } = await import('@/stores/transactionStore')
+      const transactionStore = useTransactionStore()
+      const transaction = transactionStore.transactions.find(
+        (tx) => tx._id === backendConv.transaction
+      )
+
+      if (!transaction) {
+        console.warn('Transaction not found for conversation:', backendConv._id)
+        return
+      }
+
+      const itemId = transaction.item
+
+      // Get or create local conversation
+      const conversation = getConversation(currentUserId, otherUserId, itemId)
+      
+      // Link backend conversation if not already linked
+      if (!conversation.backendConversationId) {
+        conversation.backendConversationId = backendConv._id
+        conversation.transactionId = backendConv.transaction
+      }
+
+      // Check if message already exists (prevent duplicates)
+      const existingMessage = conversation.messages.find(
+        (msg) => msg.backendId === backendMessage._id || msg.id === backendMessage._id
+      )
+
+      if (existingMessage) {
+        // Update existing message
+        existingMessage.read = backendMessage.readAt !== null
+        existingMessage.backendId = backendMessage._id
+        saveConversations()
+        return
+      }
+
+      // Add new message
+      const message: Message = {
+        id: backendMessage._id,
+        backendId: backendMessage._id,
+        fromUserId: backendMessage.author,
+        toUserId: currentUserId,
+        content: backendMessage.content,
+        timestamp: new Date(backendMessage.createdAt),
+        read: backendMessage.readAt !== null,
+      }
+
+      conversation.messages.push(message)
+      conversation.lastMessageTime = new Date(backendMessage.createdAt)
+
+      // Sort messages by timestamp
+      conversation.messages.sort(
+        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+      )
+
+      saveConversations()
+      console.log('✅ SSE message integrated into local conversation')
+    } catch (err) {
+      console.error('Failed to handle backend message:', err)
+    }
   }
 
   return {
