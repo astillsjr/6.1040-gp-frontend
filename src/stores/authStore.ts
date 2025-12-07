@@ -120,9 +120,9 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       eventSource.addEventListener('error', (event) => {
-        // Check if event.data exists before parsing
+        // Check if event is a MessageEvent with data before parsing
         // Connection errors (like 401) may not have event.data
-        if (event.data) {
+        if (event instanceof MessageEvent && event.data) {
           try {
             const data = JSON.parse(event.data)
             console.error('❌ SSE error:', data.message || data)
