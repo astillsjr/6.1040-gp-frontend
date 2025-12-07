@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as communicationAPI from '@/api/communication'
-import type { BackendMessage } from '@/api/communication'
 
 export interface Message {
   id: string
@@ -228,6 +227,27 @@ export const useMessageStore = defineStore('message', () => {
     } catch (err) {
       console.error('❌ Failed to ensure backend conversation:', err)
       return null
+    }
+  }
+
+  // Load conversation from backend (ensures conversation exists and fetches messages)
+  async function loadConversationFromBackend(
+    userId: string,
+    otherUserId: string,
+    itemId: string,
+    transactionId: string | null
+  ): Promise<void> {
+    // Ensure backend conversation exists
+    const backendConvId = await ensureBackendConversation(
+      userId,
+      otherUserId,
+      itemId,
+      transactionId
+    )
+
+    // Fetch messages if we have a conversation ID
+    if (backendConvId) {
+      await fetchMessagesFromBackend(backendConvId, userId, otherUserId, itemId)
     }
   }
 
@@ -498,6 +518,7 @@ export const useMessageStore = defineStore('message', () => {
     getUnreadCount,
     getConversationUnreadCount,
     handleMessage,
+    loadConversationFromBackend,
   }
 })
 
