@@ -247,24 +247,37 @@ function formatTime(date: Date): string {
 }
 
 async function handleSendMessage() {
+  console.log('🔵 handleSendMessage called', {
+    hasInput: !!messageInput.value.trim(),
+    currentUserId: currentUserId.value,
+    isSending: isSending.value,
+    otherUserId: props.otherUserId,
+    itemId: props.itemId,
+    transactionId: props.transactionId
+  })
+  
   if (!messageInput.value.trim() || !currentUserId.value || isSending.value) {
+    console.log('❌ Early return from handleSendMessage')
     return
   }
 
   isSending.value = true
+  console.log('✅ Starting sendMessage call')
+  
   try {
-    await messageStore.sendMessage(
+    const result = await messageStore.sendMessage(
       currentUserId.value,
       props.otherUserId,
       props.itemId,
       messageInput.value,
       props.transactionId || null
     )
+    console.log('✅ sendMessage completed:', result)
     messageInput.value = ''
     await nextTick()
     scrollToBottom()
   } catch (err) {
-    console.error('Failed to send message:', err)
+    console.error('❌ Failed to send message:', err)
     alert('Failed to send message. Please try again.')
   } finally {
     isSending.value = false

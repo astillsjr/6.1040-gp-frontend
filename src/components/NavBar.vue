@@ -21,18 +21,6 @@
         
         <!-- Show different links based on authentication status -->
         <template v-if="authStore.isAuthenticated">
-          <!-- SSE Connection Status Indicator -->
-          <div 
-            class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs"
-            :class="authStore.isSSEConnected 
-              ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30' 
-              : 'text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-950/30'"
-            :title="authStore.isSSEConnected ? 'Real-time updates active' : 'Real-time updates offline'"
-          >
-            <span class="w-1.5 h-1.5 rounded-full" :class="authStore.isSSEConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'"></span>
-            <span class="hidden sm:inline">{{ authStore.isSSEConnected ? 'Live' : 'Offline' }}</span>
-          </div>
-          
           <router-link 
             to="/items/new" 
             class="text-muted-foreground hover:text-foreground hover:bg-accent font-medium transition-all text-sm px-4 py-2 rounded-lg no-underline"

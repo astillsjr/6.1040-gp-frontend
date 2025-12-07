@@ -105,9 +105,22 @@ export const useMessageStore = defineStore('message', () => {
     itemId: string
   ): Promise<string | null> {
     try {
+      console.log('🔍 findTransactionId called', { userId, otherUserId, itemId })
+      
       // Import transaction store to find matching transaction
       const { useTransactionStore } = await import('@/stores/transactionStore')
       const transactionStore = useTransactionStore()
+      
+      console.log('📊 Transaction store state:', {
+        transactionCount: transactionStore.transactions.length,
+        transactions: transactionStore.transactions.map(tx => ({
+          id: tx._id,
+          item: tx.item,
+          from: tx.from,
+          to: tx.to,
+          status: tx.status
+        }))
+      })
       
       // Find transaction where both users are involved and item matches
       const transaction = transactionStore.transactions.find(
@@ -117,64 +130,103 @@ export const useMessageStore = defineStore('message', () => {
             (tx.from === otherUserId && tx.to === userId))
       )
       
+      if (transaction) {
+        console.log('✅ Found transaction:', transaction._id)
+      } else {
+        console.warn('⚠️ No matching transaction found', {
+          itemId,
+          userId,
+          otherUserId,
+          searchedTransactions: transactionStore.transactions.length
+        })
+      }
+      
       return transaction?._id || null
     } catch (err) {
-      console.error('Failed to find transaction ID:', err)
+      console.error('❌ Failed to find transaction ID:', err)
       return null
     }
   }
 
   // Ensure backend conversation exists and is linked to local conversation
+  // NOTE: Backend automatically creates conversations when transactions are created via syncs.
+  // This function queries for existing conversations and only creates manually as a last resort.
   async function ensureBackendConversation(
     userId: string,
     otherUserId: string,
     itemId: string,
     transactionId: string | null
   ): Promise<string | null> {
+    console.log('🔍 ensureBackendConversation called', {
+      userId,
+      otherUserId,
+      itemId,
+      transactionId
+    })
+    
     const conversation = getConversation(userId, otherUserId, itemId)
     
     // If we already have a backend conversation ID, return it
     if (conversation.backendConversationId) {
+      console.log('✅ Already have backend conversation ID:', conversation.backendConversationId)
       return conversation.backendConversationId
     }
 
     // If we don't have a transaction ID, try to find it
     if (!transactionId) {
+      console.log('🔍 No transaction ID provided, searching...')
       transactionId = await findTransactionId(userId, otherUserId, itemId)
+      console.log('🔍 Found transaction ID:', transactionId)
     }
 
-    // If still no transaction ID, we can't create a backend conversation
+    // If still no transaction ID, we can't query for or create a backend conversation
     if (!transactionId) {
-      console.warn('No transaction ID found, cannot create backend conversation')
+      console.warn('⚠️ No transaction ID found, cannot find backend conversation')
       return null
     }
 
     try {
-      // Try to get existing conversation by transaction
-      const existingConv = await communicationAPI.getConversationByTransaction({
-        transaction: transactionId,
+      // Query for existing conversations - backend should have created it automatically
+      console.log('🔍 Querying for existing conversations...')
+      const conversations = await communicationAPI.getConversationsByUser({
+        user: userId,
       })
+      
+      // Find conversation for this transaction
+      const existingConv = conversations.find(c => c.transaction === transactionId)
+      console.log('🔍 Found conversation for transaction:', existingConv ? existingConv._id : 'none')
 
       if (existingConv) {
+        // Link the conversation to our local conversation
         conversation.backendConversationId = existingConv._id
         conversation.transactionId = transactionId
         saveConversations()
+        console.log('✅ Using existing conversation:', existingConv._id)
         return existingConv._id
       }
 
-      // Create new conversation
+      // Only create manually as a last resort (should be rare - backend creates automatically)
+      console.warn('⚠️ Conversation missing for transaction, creating manually (this should be rare)')
+      const accessToken = localStorage.getItem('accessToken')
+      if (!accessToken) {
+        console.error('❌ No access token available for creating conversation')
+        return null
+      }
+
       const response = await communicationAPI.createConversation({
         participant1: userId,
         participant2: otherUserId,
         transaction: transactionId,
+        accessToken,
       })
+      console.log('✅ Created conversation manually:', response.conversation)
 
       conversation.backendConversationId = response.conversation
       conversation.transactionId = transactionId
       saveConversations()
       return response.conversation
     } catch (err) {
-      console.error('Failed to ensure backend conversation:', err)
+      console.error('❌ Failed to ensure backend conversation:', err)
       return null
     }
   }
@@ -256,15 +308,30 @@ export const useMessageStore = defineStore('message', () => {
     content: string,
     transactionId?: string | null
   ): Promise<Message> {
+    console.log('📤 sendMessage called in store', {
+      fromUserId,
+      toUserId,
+      itemId,
+      contentLength: content.length,
+      transactionId
+    })
+    
     const conversation = getConversation(fromUserId, toUserId, itemId)
+    console.log('📋 Got conversation:', {
+      hasBackendId: !!conversation.backendConversationId,
+      backendId: conversation.backendConversationId,
+      messageCount: conversation.messages.length
+    })
     
     // Ensure backend conversation exists
+    console.log('🔄 Ensuring backend conversation...')
     const backendConvId = await ensureBackendConversation(
       fromUserId,
       toUserId,
       itemId,
       transactionId || null
     )
+    console.log('🔄 Backend conversation ID:', backendConvId)
 
     // Create local message immediately for optimistic UI update
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -280,15 +347,24 @@ export const useMessageStore = defineStore('message', () => {
     conversation.messages.push(message)
     conversation.lastMessageTime = new Date()
     saveConversations()
+    console.log('💾 Saved local message')
 
     // Send to backend if we have a conversation ID
     if (backendConvId) {
+      console.log('🌐 Sending to backend API...')
       try {
+        // Get accessToken from localStorage for authentication
+        const accessToken = localStorage.getItem('accessToken')
+        if (!accessToken) {
+          throw new Error('No access token available')
+        }
+
         const response = await communicationAPI.sendMessage({
           conversation: backendConvId,
-          author: fromUserId,
           content: content.trim(),
+          accessToken,
         })
+        console.log('✅ Backend response:', response)
 
         // Update message with backend ID
         message.id = response.message
@@ -298,12 +374,17 @@ export const useMessageStore = defineStore('message', () => {
         // Refresh messages from backend to ensure sync
         await fetchMessagesFromBackend(backendConvId, fromUserId, toUserId, itemId)
       } catch (err) {
-        console.error('Failed to send message to backend:', err)
+        console.error('❌ Failed to send message to backend:', err)
         // Keep the local message even if backend send fails
         // User can retry or it will sync later
       }
     } else {
-      console.warn('No backend conversation ID, message saved locally only')
+      console.warn('⚠️ No backend conversation ID, message saved locally only', {
+        userId: fromUserId,
+        otherUserId: toUserId,
+        itemId: itemId,
+        transactionId: transactionId
+      })
     }
 
     return message
@@ -326,9 +407,16 @@ export const useMessageStore = defineStore('message', () => {
     // Mark on backend if we have a conversation ID
     if (conversation.backendConversationId) {
       try {
+        // Get accessToken from localStorage for authentication
+        const accessToken = localStorage.getItem('accessToken')
+        if (!accessToken) {
+          console.warn('No access token available for marking conversation as read')
+          return
+        }
+
         await communicationAPI.markConversationRead({
           conversation: conversation.backendConversationId,
-          user: userId,
+          accessToken,
         })
       } catch (err) {
         console.error('Failed to mark conversation as read on backend:', err)
@@ -378,22 +466,24 @@ export const useMessageStore = defineStore('message', () => {
 
     // Get conversation details to find participants and transaction
     try {
-      const backendConv = await communicationAPI.getConversation({
-        conversation: backendMessage.conversation,
-      })
-
-      if (!backendConv) {
-        console.warn('Conversation not found for message:', backendMessage._id)
-        return
-      }
-
-      // Get current user ID from auth store
+      // Get current user ID from auth store first (needed for getConversation)
       const { useAuthStore } = await import('@/stores/authStore')
       const authStore = useAuthStore()
       const currentUserId = authStore.userId
 
       if (!currentUserId) {
         console.warn('No current user ID, cannot process message')
+        return
+      }
+
+      // Use getConversationsByUser since _getConversation is unavailable
+      const backendConv = await communicationAPI.getConversation({
+        conversation: backendMessage.conversation,
+        user: currentUserId,
+      })
+
+      if (!backendConv) {
+        console.warn('Conversation not found for message:', backendMessage._id)
         return
       }
 

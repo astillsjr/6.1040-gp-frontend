@@ -610,8 +610,12 @@ async function fetchMatches() {
         const itemPhoto = await getItemPhoto(req.item)
         
         // Find transaction created from this accepted request
+        // Must match both users and the item
         const transaction = transactionStore.transactions.find(
-          (tx) => tx.item === req.item && (tx.from === otherUserId || tx.to === otherUserId)
+          (tx) =>
+            tx.item === req.item &&
+            ((tx.from === authStore.userId && tx.to === otherUserId) ||
+              (tx.from === otherUserId && tx.to === authStore.userId))
         )
         
         matchesList.push({
@@ -641,8 +645,12 @@ async function fetchMatches() {
           const itemPhoto = await getItemPhoto(req.item)
           
           // Find transaction created from this accepted request
+          // Must match both users and the item
           const transaction = transactionStore.transactions.find(
-            (tx) => tx.item === req.item && (tx.from === otherUserId || tx.to === otherUserId)
+            (tx) =>
+              tx.item === req.item &&
+              ((tx.from === authStore.userId && tx.to === otherUserId) ||
+                (tx.from === otherUserId && tx.to === authStore.userId))
           )
           
           matchesList.push({

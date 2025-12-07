@@ -23,6 +23,7 @@ export interface CreateConversationRequest {
   participant1: string
   participant2: string
   transaction: string
+  accessToken: string
 }
 
 export interface CreateConversationResponse {
@@ -31,8 +32,8 @@ export interface CreateConversationResponse {
 
 export interface SendMessageRequest {
   conversation: string
-  author: string
   content: string
+  accessToken: string
 }
 
 export interface SendMessageResponse {
@@ -45,7 +46,7 @@ export interface MarkMessageReadRequest {
 
 export interface MarkConversationReadRequest {
   conversation: string
-  user: string
+  accessToken: string
 }
 
 export interface GetMessagesResponse {
@@ -121,32 +122,28 @@ export async function getMessages(
 
 /**
  * Get a conversation by ID
+ * NOTE: This endpoint is not available. Use getConversationsByUser and filter client-side instead.
+ * @deprecated This endpoint is unavailable - use getConversationsByUser and filter by conversation ID
  */
 export async function getConversation(
-  data: { conversation: string }
+  data: { conversation: string; user: string }
 ): Promise<BackendConversation | null> {
-  const response = await apiClient.post<GetConversationResponse[]>(
-    buildApiPath('Communication/_getConversation'),
-    data
-  )
-  const result = extractData(response)
-  // Returns empty array if not found
-  return result[0]?.conversationDoc || null
+  // Replace with getConversationsByUser since _getConversation is unavailable
+  const conversations = await getConversationsByUser({ user: data.user })
+  return conversations.find(c => c._id === data.conversation) || null
 }
 
 /**
  * Get conversation by transaction ID
+ * NOTE: This endpoint is not available. Use getConversationsByUser and filter client-side instead.
+ * @deprecated This endpoint is unavailable - use getConversationsByUser and filter by transaction ID
  */
 export async function getConversationByTransaction(
-  data: { transaction: string }
+  data: { transaction: string; user: string }
 ): Promise<BackendConversation | null> {
-  const response = await apiClient.post<GetConversationResponse[]>(
-    buildApiPath('Communication/_getConversationByTransaction'),
-    data
-  )
-  const result = extractData(response)
-  // Returns empty array if not found
-  return result[0]?.conversation || null
+  // Replace with getConversationsByUser since _getConversationByTransaction is unavailable
+  const conversations = await getConversationsByUser({ user: data.user })
+  return conversations.find(c => c.transaction === data.transaction) || null
 }
 
 /**
