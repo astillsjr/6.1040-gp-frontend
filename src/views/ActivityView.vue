@@ -227,6 +227,7 @@
       :item-id="selectedMatch.itemId"
       :item-title="selectedMatch.itemTitle"
       :item-image="selectedMatch.itemImage"
+      :transaction-id="selectedMatch.transactionId"
       @close="closeChat"
     />
   </div>
@@ -556,6 +557,7 @@ interface Match {
   matchType: 'accepted-request' | 'transaction'
   status: string
   date: Date
+  transactionId: string | null
   rawData: any
 }
 
@@ -607,6 +609,15 @@ async function fetchMatches() {
         const profile = await getProfile(otherUserId)
         const itemPhoto = await getItemPhoto(req.item)
         
+        // Find transaction created from this accepted request
+        // Must match both users and the item
+        const transaction = transactionStore.transactions.find(
+          (tx) =>
+            tx.item === req.item &&
+            ((tx.from === authStore.userId && tx.to === otherUserId) ||
+              (tx.from === otherUserId && tx.to === authStore.userId))
+        )
+        
         matchesList.push({
           id: `match-req-in-${req._id}`,
           otherUserId,
@@ -617,6 +628,7 @@ async function fetchMatches() {
           matchType: 'accepted-request',
           status: 'ACCEPTED',
           date: new Date(req.createdAt),
+          transactionId: transaction?._id || null,
           rawData: req,
         })
       }
@@ -632,6 +644,15 @@ async function fetchMatches() {
           const profile = await getProfile(otherUserId)
           const itemPhoto = await getItemPhoto(req.item)
           
+          // Find transaction created from this accepted request
+          // Must match both users and the item
+          const transaction = transactionStore.transactions.find(
+            (tx) =>
+              tx.item === req.item &&
+              ((tx.from === authStore.userId && tx.to === otherUserId) ||
+                (tx.from === otherUserId && tx.to === authStore.userId))
+          )
+          
           matchesList.push({
             id: `match-req-out-${req._id}`,
             otherUserId,
@@ -642,6 +663,7 @@ async function fetchMatches() {
             matchType: 'accepted-request',
             status: 'ACCEPTED',
             date: new Date(req.createdAt),
+            transactionId: transaction?._id || null,
             rawData: req,
           })
         }
@@ -665,6 +687,7 @@ async function fetchMatches() {
           matchType: 'transaction',
           status: tx.status,
           date: new Date(tx.createdAt),
+          transactionId: tx._id,
           rawData: tx,
         })
       }

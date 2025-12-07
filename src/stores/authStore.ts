@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import * as authAPI from '@/api/auth'
-import { getUserIdFromToken } from '@/utils/jwt'
+import { getUserIdFromToken, isTokenExpired } from '@/utils/jwt'
 import type { AxiosError } from 'axios'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -166,6 +166,14 @@ export const useAuthStore = defineStore('auth', () => {
     const storedUsername = localStorage.getItem('username')
 
     if (storedAccessToken) {
+      // Check if token is expired before using it
+      if (isTokenExpired(storedAccessToken)) {
+        console.log('⚠️ Stored token is expired, clearing...')
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        // Don't set the token if it's expired
+        return
+      }
       accessToken.value = storedAccessToken
       updateUserIdFromToken()
     }
@@ -293,9 +301,11 @@ export const useAuthStore = defineStore('auth', () => {
   async function refreshAccessToken(): Promise<boolean> {
     try {
       if (!refreshToken.value) {
+        console.error('❌ No refresh token available')
         return false
       }
 
+      console.log('🔄 Refreshing access token...')
       const response = await authAPI.refreshAccessToken({
         refreshToken: refreshToken.value,
       })
@@ -307,8 +317,13 @@ export const useAuthStore = defineStore('auth', () => {
       startSSEConnection()
       return true
     } catch (err) {
-      console.error('Token refresh failed:', err)
-      clearAuth()
+      console.error('❌ Token refresh failed:', err)
+      // Only clear auth if refresh token is also invalid
+      const axiosError = err as AxiosError<{ error?: string; message?: string }>
+      if (axiosError.response?.status === 401) {
+        console.error('❌ Refresh token is invalid, clearing auth')
+        clearAuth()
+      }
       return false
     }
   }
