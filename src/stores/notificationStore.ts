@@ -168,4 +168,3 @@ export const useNotificationStore = defineStore('notification', () => {
     clearAllNotifications,
   }
 })
-

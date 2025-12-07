@@ -66,31 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
-    // Check if token is expired and refresh if needed before connecting
-    if (isTokenExpired(accessToken.value)) {
-      console.log('🔄 Token expired, refreshing before SSE connection...')
-      const refreshed = await refreshAccessToken()
-      if (!refreshed) {
-        console.error('❌ Failed to refresh token, cannot start SSE connection')
-        return
-      }
-      // refreshAccessToken already calls stopSSEConnection and startSSEConnection
-      // so we can return here to avoid double connection
-      return
-    }
-
     try {
       const url = buildSSEUrl(accessToken.value)
       console.log('🔌 Starting SSE connection:', url)
       
       const eventSource = new EventSource(url)
-      let hasHandledAuthError = false
       
       eventSource.addEventListener('connected', (event) => {
         const data = JSON.parse(event.data)
         console.log('✅ SSE connected:', data.message)
         isSSEConnected.value = true
-        hasHandledAuthError = false // Reset on successful connection
       })
 
       eventSource.addEventListener('notification', async (event) => {
@@ -134,63 +119,28 @@ export const useAuthStore = defineStore('auth', () => {
         isSSEConnected.value = true
       })
 
-      // Handle backend error events (custom events from backend)
-      eventSource.addEventListener('error', (event: MessageEvent) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.error('❌ SSE error:', data.message)
-          
-          // Check if it's an authentication error
-          const isAuthError = data.message?.toLowerCase().includes('token') || 
-                             data.message?.toLowerCase().includes('expired') || 
-                             data.message?.toLowerCase().includes('invalid') ||
-                             data.message?.toLowerCase().includes('unauthorized')
-          
-          if (isAuthError && !hasHandledAuthError) {
-            hasHandledAuthError = true
-            console.log('🔄 Auth error detected, attempting token refresh...')
-            // Close current connection
-            stopSSEConnection()
-            // Try to refresh token and reconnect
-            refreshAccessToken().then((refreshed) => {
-              if (refreshed) {
-                console.log('✅ Token refreshed, will reconnect SSE')
-                // refreshAccessToken already calls startSSEConnection
-              } else {
-                console.error('❌ Token refresh failed, SSE connection will not be established')
-              }
-            })
+      eventSource.addEventListener('error', (event) => {
+        // Check if event.data exists before parsing
+        // Connection errors (like 401) may not have event.data
+        if (event.data) {
+          try {
+            const data = JSON.parse(event.data)
+            console.error('❌ SSE error:', data.message || data)
+          } catch (e) {
+            console.error('❌ SSE error (invalid JSON):', event.data)
           }
-        } catch {
-          // Event might not have parseable data - this is normal for connection errors
-          // Only log if we haven't handled an auth error
-          if (!hasHandledAuthError) {
-            console.error('❌ SSE error event (non-JSON):', event)
-          }
+        } else {
+          // Connection error - event.data is undefined
+          // This is handled by eventSource.onerror below
+          console.error('❌ SSE error event (no data)')
         }
       })
 
       eventSource.onerror = (error) => {
-        // Only log if we haven't already handled an auth error
-        if (!hasHandledAuthError) {
-          console.error('❌ EventSource connection error:', error)
-        }
+        console.error('❌ EventSource connection error:', error)
         isSSEConnected.value = false
-        
-        // Check if token might be expired and try refresh
-        if (accessToken.value && isTokenExpired(accessToken.value) && !hasHandledAuthError) {
-          hasHandledAuthError = true
-          console.log('🔄 Token expired, attempting refresh...')
-          stopSSEConnection()
-          refreshAccessToken().then((refreshed) => {
-            if (refreshed) {
-              console.log('✅ Token refreshed, will reconnect SSE')
-            }
-          })
-        } else if (!hasHandledAuthError) {
-          // Only close if we haven't handled auth error
-          stopSSEConnection()
-        }
+        // Close and cleanup
+        stopSSEConnection()
       }
 
       sseConnection.value = eventSource
@@ -362,17 +312,9 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = response.accessToken
       syncTokensToStorage()
       updateUserIdFromToken()
-      console.log('✅ Access token refreshed successfully')
-      
-      // Reconnect SSE with new token (only if we're not already in the process of starting)
-      // Use a small delay to ensure the old connection is fully closed
+      // Reconnect SSE with new token
       stopSSEConnection()
-      setTimeout(() => {
-        if (accessToken.value && !sseConnection.value) {
-          startSSEConnection()
-        }
-      }, 500)
-      
+      startSSEConnection()
       return true
     } catch (err) {
       console.error('❌ Token refresh failed:', err)
