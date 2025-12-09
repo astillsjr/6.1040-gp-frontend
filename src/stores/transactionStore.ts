@@ -150,8 +150,16 @@ export const useTransactionStore = defineStore('transaction', () => {
       // If status changed to PENDING_PICKUP, show notification to item owner
       if (updatedTransaction.status === 'PENDING_PICKUP') {
         const { useNotificationStore } = await import('@/stores/notificationStore')
+        const { useAuthStore } = await import('@/stores/authStore')
         const notificationStore = useNotificationStore()
-        notificationStore.showTransactionCreatedNotification(updatedTransaction, existing.itemDetails)
+        const authStore = useAuthStore()
+        const currentUserId = authStore.getCurrentUserId()
+        await notificationStore.showTransactionCreatedNotification(
+          updatedTransaction,
+          existing.itemDetails,
+          undefined,
+          currentUserId || undefined
+        )
       }
     } else {
       // New transaction - fetch item details and add it
@@ -173,8 +181,16 @@ export const useTransactionStore = defineStore('transaction', () => {
         // If transaction is PENDING_PICKUP, show notification to item owner
         if (updatedTransaction.status === 'PENDING_PICKUP') {
           const { useNotificationStore } = await import('@/stores/notificationStore')
+          const { useAuthStore } = await import('@/stores/authStore')
           const notificationStore = useNotificationStore()
-          notificationStore.showTransactionCreatedNotification(updatedTransaction, itemDetails)
+          const authStore = useAuthStore()
+          const currentUserId = authStore.getCurrentUserId()
+          await notificationStore.showTransactionCreatedNotification(
+            updatedTransaction,
+            itemDetails,
+            undefined,
+            currentUserId || undefined
+          )
         }
       } catch (err) {
         console.error('Failed to fetch item details for transaction:', err)

@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as itemAPI from '@/api/items'
-import * as itemListingAPI from '@/api/itemListing'
 import * as itemRequestingAPI from '@/api/itemRequesting'
 import * as userProfileAPI from '@/api/userProfile'
 import type { Item as BackendItem } from '@/api/items'
@@ -76,7 +75,10 @@ export const useItemStore = defineStore('item', () => {
   // Helper: Get first photo URL for an item
   async function getItemPhoto(itemId: string): Promise<string | null> {
     try {
-      const photos = await itemListingAPI.getPhotosByItem({ item: itemId })
+      // Use itemListingStore to avoid direct API calls
+      const { useItemListingStore } = await import('@/stores/itemListingStore')
+      const itemListingStore = useItemListingStore()
+      const photos = await itemListingStore.getPhotosByItem(itemId)
       if (photos.length > 0) {
         // Sort by order and return first
         const sorted = photos.sort((a, b) => a.order - b.order)
@@ -166,9 +168,10 @@ export const useItemStore = defineStore('item', () => {
         allItems.map(async (item) => {
           try {
             // Check if this item has an available listing
-            const listing = await itemListingAPI.getListingByItem({
-              item: item._id,
-            })
+            // Use itemListingStore to avoid direct API calls
+            const { useItemListingStore } = await import('@/stores/itemListingStore')
+            const itemListingStore = useItemListingStore()
+            const listing = await itemListingStore.getListingByItem(item._id)
 
             // Only include if listing exists and is available
             if (listing && listing.status === 'AVAILABLE') {
@@ -264,7 +267,10 @@ export const useItemStore = defineStore('item', () => {
       // Try to get listing for this item
       let listing: Listing | undefined
       try {
-        const listingResult = await itemListingAPI.getListingByItem({ item: itemId })
+        // Use itemListingStore to avoid direct API calls
+        const { useItemListingStore } = await import('@/stores/itemListingStore')
+        const itemListingStore = useItemListingStore()
+        const listingResult = await itemListingStore.getListingByItem(itemId)
         if (listingResult) {
           listing = listingResult
         }

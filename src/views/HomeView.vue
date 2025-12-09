@@ -17,7 +17,11 @@
           MIT's Community Resource Sharing Platform. Borrow items from fellow students, share what you have, and build a more sustainable campus.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <router-link to="/items" class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold bg-primary text-primary-foreground hover:bg-recycling-green-dark transition-all shadow-sustainable hover:shadow-sustainable-lg transform hover:-translate-y-0.5 w-full sm:w-auto">
+          <router-link
+            v-if="authStore.isAuthenticated"
+            to="/items"
+            class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold bg-primary text-primary-foreground hover:bg-recycling-green-dark transition-all shadow-sustainable hover:shadow-sustainable-lg transform hover:-translate-y-0.5 w-full sm:w-auto"
+          >
             <Search class="w-5 h-5" />
             Browse Items
           </router-link>
@@ -29,13 +33,24 @@
             <Plus class="w-5 h-5" />
             List an Item
           </router-link>
-          <router-link
-            v-else
-            to="/register"
-            class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold border-2 border-primary/20 bg-card text-foreground hover:bg-recycling-green-pale hover:border-primary/40 transition-all w-full sm:w-auto"
-          >
-            Get Started
-          </router-link>
+          <template v-else>
+            <router-link
+              to="/register"
+              class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold bg-primary text-primary-foreground hover:bg-recycling-green-dark transition-all shadow-sustainable hover:shadow-sustainable-lg transform hover:-translate-y-0.5 w-full sm:w-auto"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Get Started
+            </router-link>
+            <router-link
+              to="/items"
+              class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold border-2 border-primary/20 bg-card text-foreground hover:bg-recycling-green-pale hover:border-primary/40 transition-all w-full sm:w-auto"
+            >
+              <Search class="w-5 h-5" />
+              Browse Items
+            </router-link>
+          </template>
         </div>
       </div>
     </div>
@@ -90,10 +105,55 @@
             <Star class="w-8 h-8 text-recycling-green fill-recycling-green" />
           </div>
           <h3 class="text-xl font-semibold text-foreground mb-3">Earn Rewards</h3>
-          <p class="text-sm text-muted-foreground leading-relaxed">
-            Get rewarded for lending and helping the community (once you have 500 points email localloop@mit.edu for rewards!)
+          <p class="text-sm text-muted-foreground leading-relaxed mb-2">
+            Get rewarded for lending and helping the community
+          </p>
+          <p class="text-xs text-muted-foreground italic">
+            Reach 500 points to unlock rewards
           </p>
         </Card>
+      </div>
+    </div>
+
+    <!-- Featured Items Section -->
+    <div v-if="featuredItems.length > 0" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-16 sm:pb-20">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="text-3xl sm:text-4xl font-bold text-foreground mb-2">
+            Featured Items
+          </h2>
+          <p class="text-lg text-muted-foreground">
+            Discover items available in your community
+          </p>
+        </div>
+        <router-link
+          to="/items"
+          class="hidden sm:inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          View All
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </router-link>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <ItemCard
+          v-for="item in featuredItems"
+          :key="item.id"
+          :item="item"
+          @click="handleItemClick(item.id)"
+        />
+      </div>
+      <div class="mt-8 text-center sm:hidden">
+        <router-link
+          to="/items"
+          class="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          View All Items
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </router-link>
       </div>
     </div>
 
@@ -101,60 +161,77 @@
     <div class="bg-card border-t border-border">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+          <!-- Items Available -->
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">{{ displayItemCount() }}</div>
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <Package class="w-6 h-6 text-primary opacity-70" />
+              <div class="text-4xl sm:text-5xl font-bold text-primary">
+                <template v-if="itemStore.isLoading && itemCount === 0">
+                  <div class="inline-block w-16 h-12 bg-muted rounded-lg animate-pulse"></div>
+                </template>
+                <template v-else>
+                  {{ displayItemCount() }}
+                </template>
+              </div>
+            </div>
             <p class="text-base text-muted-foreground font-medium">Items Available</p>
           </div>
+          
+          <!-- Active Users -->
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">{{ displayUserCount() }}</div>
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <svg class="w-6 h-6 text-primary opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <div class="text-4xl sm:text-5xl font-bold text-primary">
+                <template v-if="isLoading && userCount === null">
+                  <div class="inline-block w-16 h-12 bg-muted rounded-lg animate-pulse"></div>
+                </template>
+                <template v-else>
+                  {{ displayUserCount() }}
+                </template>
+              </div>
+            </div>
             <p class="text-base text-muted-foreground font-medium">Active Users</p>
           </div>
+          
+          <!-- Successful Borrows -->
           <div class="space-y-2">
-            <div class="text-4xl sm:text-5xl font-bold text-primary mb-2">{{ displaySuccessfulBorrowsCount() }}</div>
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <svg class="w-6 h-6 text-primary opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="text-4xl sm:text-5xl font-bold text-primary">
+                <template v-if="successfulBorrowsCount === null">
+                  <div class="inline-block w-16 h-12 bg-muted rounded-lg animate-pulse"></div>
+                </template>
+                <template v-else>
+                  {{ displaySuccessfulBorrowsCount() }}
+                </template>
+              </div>
+            </div>
             <p class="text-base text-muted-foreground font-medium">Successful Borrows</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- CTA Section -->
-    <div class="bg-background border-t border-border">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center">
-        <h2 class="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-          Ready to get started?
-        </h2>
-        <p class="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Join the MIT community and start borrowing and sharing today.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <router-link
-            v-if="!authStore.isAuthenticated"
-            to="/register"
-            class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold bg-primary text-primary-foreground hover:bg-recycling-green-dark transition-all shadow-sustainable hover:shadow-sustainable-lg transform hover:-translate-y-0.5 w-full sm:w-auto"
-          >
-            Create Account
-          </router-link>
-          <router-link
-            to="/items"
-            class="inline-flex items-center justify-center gap-2 h-12 rounded-xl px-8 text-base font-semibold border-2 border-primary/20 bg-card text-foreground hover:bg-recycling-green-pale hover:border-primary/40 transition-all w-full sm:w-auto"
-          >
-            Browse Items
-          </router-link>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useItemStore } from '@/stores/itemStore'
 import { Card } from '@/components/ui'
+import ItemCard from '@/components/items/ItemCard.vue'
 import { Search, Plus, Package, MessageSquare, Star } from 'lucide-vue-next'
 import { getUserCount } from '@/api/auth'
 import { getSuccessfulBorrowsCount } from '@/api/itemTransaction'
+import type { DisplayItem } from '@/stores/itemStore'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const itemStore = useItemStore()
 const userCount = ref<number | null>(null)
@@ -163,6 +240,17 @@ const isLoading = ref(true)
 
 // Use the itemStore's items count to match what's shown on the browse items page
 const itemCount = computed(() => itemStore.items.length)
+
+// Featured items - show first 8 available items
+const featuredItems = computed<DisplayItem[]>(() => {
+  return itemStore.items
+    .filter(item => item.listingStatus === 'AVAILABLE')
+    .slice(0, 8)
+})
+
+const handleItemClick = (itemId: string) => {
+  router.push(`/items/${itemId}`)
+}
 
 onMounted(async () => {
   // Set a maximum wait time - if it takes longer, show a fallback

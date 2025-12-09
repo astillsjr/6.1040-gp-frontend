@@ -20,45 +20,103 @@
           
           <div class="space-y-2">
             <Label for="username" class="text-foreground font-medium">Username</Label>
-            <Input
-              id="username"
-              v-model="username"
-              type="text"
-              required
-              placeholder="Enter your username"
-              :disabled="authStore.isLoading"
-              class="h-12 rounded-xl border-2 focus:border-primary"
-              @input="clearError"
-            />
+            <div class="relative">
+              <Input
+                id="username"
+                v-model="username"
+                type="text"
+                required
+                placeholder="Enter your username"
+                :disabled="authStore.isLoading"
+                class="h-12 rounded-xl border-2 focus:border-primary pr-10"
+                :class="{ 'border-primary': username && !validationErrors.username, 'border-destructive': validationErrors.username }"
+                @input="clearError; validateUsername()"
+                autocomplete="username"
+                aria-describedby="username-error"
+                aria-invalid="!!validationErrors.username"
+              />
+              <div v-if="username && !validationErrors.username" class="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <p v-if="validationErrors.username" id="username-error" class="text-sm text-destructive font-medium flex items-center gap-1">
+              <span>⚠️</span>
+              {{ validationErrors.username }}
+            </p>
           </div>
           <div class="space-y-2">
             <Label for="password" class="text-foreground font-medium">Password</Label>
-            <Input
-              id="password"
-              v-model="password"
-              type="password"
-              required
-              placeholder="Enter your password"
-              :disabled="authStore.isLoading"
-              class="h-12 rounded-xl border-2 focus:border-primary"
-              @input="clearError"
-            />
+            <div class="relative">
+              <Input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                placeholder="Enter your password"
+                :disabled="authStore.isLoading"
+                class="h-12 rounded-xl border-2 focus:border-primary pr-12 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
+                :class="{ 'border-primary': password && !validationErrors.password, 'border-destructive': validationErrors.password }"
+                @input="clearError; validatePassword()"
+                autocomplete="current-password"
+                aria-describedby="password-error"
+                style="-webkit-text-security: none;"
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                :disabled="authStore.isLoading"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md p-1"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                tabindex="0"
+              >
+                <Eye v-if="!showPassword" class="w-5 h-5" />
+                <EyeOff v-else class="w-5 h-5" />
+              </button>
+            </div>
+            <p v-if="validationErrors.password" id="password-error" class="text-sm text-destructive font-medium flex items-center gap-1">
+              <span>⚠️</span>
+              {{ validationErrors.password }}
+            </p>
           </div>
-          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20 flex items-start gap-2">
-            <span class="text-lg">⚠️</span>
-            <div>
-              <p class="font-semibold mb-1">Login Failed</p>
-              <p>{{ authStore.error }}</p>
-              <p class="mt-2 text-xs opacity-90">Please check your username and password, or <router-link to="/register" class="underline font-semibold">create a new account</router-link> if you don't have one.</p>
+          <div v-if="authStore.error" class="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border-2 border-destructive/20" role="alert" aria-live="polite">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <p class="font-semibold mb-1">Login Failed</p>
+                <p class="mb-2">{{ authStore.error }}</p>
+                <div class="mt-3 pt-3 border-t border-destructive/20">
+                  <p class="text-xs opacity-90 mb-2">Troubleshooting tips:</p>
+                  <ul class="text-xs opacity-90 space-y-1 list-disc list-inside">
+                    <li>Check that your username and password are correct</li>
+                    <li>Make sure Caps Lock is off</li>
+                    <li>Try resetting your password if you've forgotten it</li>
+                  </ul>
+                  <p class="text-xs opacity-90 mt-2">
+                    Don't have an account? <router-link to="/register" class="underline font-semibold hover:no-underline">Create one here</router-link>
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
           <Button
             type="submit"
-            :disabled="authStore.isLoading"
-            class="w-full h-12 rounded-xl font-semibold shadow-sustainable hover:shadow-sustainable-lg"
+            :disabled="authStore.isLoading || !isFormValid"
+            class="w-full h-12 rounded-xl font-semibold shadow-sustainable hover:shadow-sustainable-lg relative"
             size="lg"
+            aria-busy="authStore.isLoading"
           >
-            {{ authStore.isLoading ? 'Logging in...' : 'Login' }}
+            <span v-if="authStore.isLoading" class="flex items-center justify-center gap-2">
+              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Logging in...
+            </span>
+            <span v-else>Login</span>
           </Button>
           <p class="text-center text-sm text-muted-foreground">
             Don't have an account?
@@ -73,10 +131,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
+import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -84,6 +143,13 @@ const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
+const validationErrors = ref<{ username?: string; password?: string }>({})
+
+// Form validation
+const isFormValid = computed(() => {
+  return username.value.length > 0 && password.value.length > 0 && Object.keys(validationErrors.value).length === 0
+})
 
 // Clear error when user starts typing
 const clearError = () => {
@@ -91,6 +157,39 @@ const clearError = () => {
     authStore.error = null
   }
 }
+
+// Validation functions
+const validateUsername = () => {
+  if (!username.value) {
+    validationErrors.value.username = undefined
+    return
+  }
+  if (username.value.length < 3) {
+    validationErrors.value.username = 'Username must be at least 3 characters'
+  } else {
+    delete validationErrors.value.username
+  }
+}
+
+const validatePassword = () => {
+  if (!password.value) {
+    validationErrors.value.password = undefined
+    return
+  }
+  if (password.value.length < 1) {
+    validationErrors.value.password = 'Password is required'
+  } else {
+    delete validationErrors.value.password
+  }
+}
+
+// Auto-focus first input
+onMounted(() => {
+  const usernameInput = document.getElementById('username') as HTMLInputElement
+  if (usernameInput) {
+    usernameInput.focus()
+  }
+})
 
 const handleLogin = async () => {
   // Clear any previous errors
@@ -108,138 +207,14 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.auth-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #A31F34 0%, #8A1538 100%);
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
+/* Hide browser's native password reveal buttons */
+:deep(input[type="password"]::-ms-reveal),
+:deep(input[type="password"]::-ms-clear) {
+  display: none;
 }
 
-.auth-container::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(46, 125, 50, 0.1) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.auth-card {
-  background: white;
-  border-radius: 16px;
-  padding: 48px 40px;
-  width: 100%;
-  max-width: 440px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  position: relative;
-  z-index: 1;
-}
-
-.auth-card h1 {
-  text-align: center;
-  margin-bottom: 36px;
-  color: #1A1A1A;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.form-group label {
-  font-weight: 600;
-  color: #4A5568;
-  font-size: 14px;
-}
-
-.form-group input {
-  padding: 14px 16px;
-  border: 2px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: all 0.2s;
-  background-color: #F7FAFC;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #2E7D32;
-  background-color: white;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-}
-
-.error-message {
-  background-color: #FEE2E2;
-  color: #A31F34;
-  padding: 14px;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 14px;
-  border: 1px solid #FECACA;
-}
-
-.submit-btn {
-  padding: 14px;
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
-  margin-top: 8px;
-}
-
-.submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
-  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
-}
-
-.submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.auth-footer {
-  text-align: center;
-  color: #718096;
-  margin-top: 20px;
-  font-size: 14px;
-}
-
-.auth-footer a {
-  color: #2E7D32;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
-}
-
-.auth-footer a:hover {
-  color: #1B5E20;
-  text-decoration: underline;
+:deep(input[type="password"]::-webkit-credentials-auto-fill-button) {
+  display: none !important;
 }
 </style>
+

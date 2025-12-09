@@ -150,6 +150,59 @@ export const useRequestStore = defineStore('request', () => {
     }
   }
 
+  async function createRequest(data: {
+    requester: string
+    item: string
+    type: 'BORROW' | 'TRANSFER' | 'ITEM'
+    requesterNotes: string
+    requestedStartTime: Date | null
+    requestedEndTime: Date | null
+  }): Promise<string> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await itemRequestingAPI.createRequest({
+        requester: data.requester,
+        item: data.item,
+        type: data.type,
+        status: 'PENDING',
+        requesterNotes: data.requesterNotes,
+        requestedStartTime: data.requestedStartTime,
+        requestedEndTime: data.requestedEndTime,
+      })
+
+      // Fetch the created request with item details and add to outgoing requests
+      // This will be updated via SSE, but we can optimistically add it
+      try {
+        const itemDetails = await itemsAPI.getItemById({ item: data.item })
+        const newRequest: RequestWithItem = {
+          _id: response.request,
+          requester: data.requester,
+          item: data.item,
+          type: data.type,
+          status: 'PENDING',
+          requesterNotes: data.requesterNotes,
+          requestedStartTime: data.requestedStartTime,
+          requestedEndTime: data.requestedEndTime,
+          createdAt: new Date(),
+          itemDetails,
+        }
+        outgoingRequests.value.unshift(newRequest)
+      } catch (err) {
+        // If we can't fetch item details, that's okay - SSE will update it
+        console.warn('Could not fetch item details for new request:', err)
+      }
+
+      return response.request
+    } catch (err: any) {
+      error.value = err.message || 'Failed to create request'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Handle SSE request updates
   function handleRequestUpdate(updatedRequest: ItemRequest) {
     // Update in incoming requests if it exists
@@ -179,9 +232,9 @@ export const useRequestStore = defineStore('request', () => {
 
       // If request was accepted, show notification
       if (updatedRequest.status === 'ACCEPTED') {
-        import('@/stores/notificationStore').then(({ useNotificationStore }) => {
+        import('@/stores/notificationStore').then(async ({ useNotificationStore }) => {
           const notificationStore = useNotificationStore()
-          notificationStore.showRequestAcceptedNotification(updatedRequest, existing.itemDetails)
+          await notificationStore.showRequestAcceptedNotification(updatedRequest, existing.itemDetails)
         })
       }
     } else if (updatedRequest.status === 'ACCEPTED') {
@@ -190,7 +243,7 @@ export const useRequestStore = defineStore('request', () => {
         .then(async (itemDetails) => {
           const { useNotificationStore } = await import('@/stores/notificationStore')
           const notificationStore = useNotificationStore()
-          notificationStore.showRequestAcceptedNotification(updatedRequest, itemDetails)
+          await notificationStore.showRequestAcceptedNotification(updatedRequest, itemDetails)
         })
         .catch((err) => {
           console.error('Failed to fetch item details for notification:', err)
@@ -208,6 +261,7 @@ export const useRequestStore = defineStore('request', () => {
     acceptRequest,
     rejectRequest,
     cancelRequest,
+    createRequest,
     handleRequestUpdate,
   }
 })

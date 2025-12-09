@@ -139,8 +139,16 @@ export const useAuthStore = defineStore('auth', () => {
       eventSource.onerror = (error) => {
         console.error('❌ EventSource connection error:', error)
         isSSEConnected.value = false
-        // Close and cleanup
-        stopSSEConnection()
+        
+        // Check if token was refreshed in localStorage (might have been refreshed by axios interceptor)
+        const storedToken = localStorage.getItem('accessToken')
+        if (storedToken && storedToken !== accessToken.value) {
+          console.log('🔄 Token was refreshed, syncing and reconnecting SSE...')
+          syncTokenFromStorage()
+        } else {
+          // Close and cleanup if token wasn't refreshed
+          stopSSEConnection()
+        }
       }
 
       sseConnection.value = eventSource
@@ -339,6 +347,19 @@ export const useAuthStore = defineStore('auth', () => {
     syncTokensToStorage()
   }
 
+  // Sync token from localStorage (called when axios interceptor refreshes token)
+  function syncTokenFromStorage() {
+    const storedToken = localStorage.getItem('accessToken')
+    if (storedToken && storedToken !== accessToken.value) {
+      console.log('🔄 Syncing refreshed token from localStorage to authStore')
+      accessToken.value = storedToken
+      updateUserIdFromToken()
+      // Reconnect SSE with new token
+      stopSSEConnection()
+      startSSEConnection()
+    }
+  }
+
   // Helper methods for compatibility
   function getCurrentUserId(): string | null {
     return userId.value || getUserIdFromToken(accessToken.value)
@@ -395,6 +416,8 @@ export const useAuthStore = defineStore('auth', () => {
     // SSE methods
     startSSEConnection,
     stopSSEConnection,
+    // Token sync method
+    syncTokenFromStorage,
   }
 })
 

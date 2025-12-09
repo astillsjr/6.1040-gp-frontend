@@ -11,8 +11,68 @@
     <!-- Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Loading State -->
-      <div v-if="isLoading" class="flex justify-center py-16">
-        <div class="text-muted-foreground text-lg">Loading activity...</div>
+      <div v-if="isLoading" class="space-y-8">
+        <!-- Tab Skeleton -->
+        <div class="flex gap-2 border-b border-border pb-2">
+          <div class="h-10 w-24 bg-muted rounded-lg animate-pulse"></div>
+          <div class="h-10 w-32 bg-muted rounded-lg animate-pulse"></div>
+          <div class="h-10 w-36 bg-muted rounded-lg animate-pulse"></div>
+          <div class="h-10 w-28 bg-muted rounded-lg animate-pulse"></div>
+        </div>
+
+        <!-- Activity Cards Skeleton -->
+        <div class="space-y-6">
+          <!-- Section Header Skeleton -->
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
+            <div class="h-7 w-48 bg-muted rounded animate-pulse"></div>
+          </div>
+
+          <!-- Activity Card Skeletons -->
+          <div class="space-y-4">
+            <div
+              v-for="i in 4"
+              :key="i"
+              class="bg-card rounded-xl border-2 border-border p-6 animate-pulse"
+            >
+              <div class="flex gap-5">
+                <!-- Image Skeleton -->
+                <div class="flex-shrink-0 w-28 h-28 bg-muted rounded-xl"></div>
+
+                <!-- Content Skeleton -->
+                <div class="flex-1 space-y-3">
+                  <!-- Title and Badge -->
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1 space-y-2">
+                      <div class="flex items-center gap-2">
+                        <div class="w-5 h-5 bg-muted rounded"></div>
+                        <div class="h-5 bg-muted rounded w-48"></div>
+                      </div>
+                      <div class="h-4 bg-muted rounded w-32"></div>
+                    </div>
+                    <div class="h-6 bg-muted rounded-full w-20"></div>
+                  </div>
+
+                  <!-- Time Info Skeleton -->
+                  <div class="h-6 bg-muted rounded-lg w-40"></div>
+
+                  <!-- Notes Skeleton -->
+                  <div class="bg-muted/50 rounded-lg p-3 space-y-2">
+                    <div class="h-3 bg-muted rounded w-16"></div>
+                    <div class="h-3 bg-muted rounded w-full"></div>
+                    <div class="h-3 bg-muted rounded w-3/4"></div>
+                  </div>
+
+                  <!-- Actions Skeleton -->
+                  <div class="flex gap-2 pt-2 border-t border-border">
+                    <div class="h-9 bg-muted rounded-lg w-24"></div>
+                    <div class="h-9 bg-muted rounded-lg w-28"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Error State -->
@@ -32,189 +92,359 @@
         <Button @click="$router.push('/items')" class="rounded-xl">Browse Items</Button>
       </div>
 
-      <!-- Activity Sections -->
-      <div v-else class="space-y-8">
-        <!-- DIRECT COMMUNICATION (MATCHES) -->
-        <section v-if="matches.length > 0" class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
-          <h2 class="text-2xl font-bold text-blue-900 mb-5 flex items-center gap-3">
-            <MessageCircle class="w-6 h-6 text-blue-600" />
-            <span class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-              {{ matches.length }}
-            </span>
-            Direct Communication
-          </h2>
-          <p class="text-blue-800 mb-5 text-sm">Connect with users you've matched with for item exchanges</p>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card
-              v-for="match in matches"
-              :key="match.id"
-              class="p-4 hover:shadow-md transition-shadow border-2"
+      <!-- Activity Sections with Tabs -->
+      <div v-else>
+        <Tabs>
+          <TabsList>
+            <TabsTrigger
+              :is-active="activeTab === 'overview'"
+              :badge-count="actionRequired.length"
+              @click="activeTab = 'overview'"
             >
-              <div class="flex gap-4">
-                <!-- Other User Avatar -->
-                <div class="flex-shrink-0">
-                  <img
-                    :src="getUserAvatar(match.otherUserProfile, match.otherUserId)"
-                    :alt="match.otherUserProfile?.displayName || 'User'"
-                    class="w-16 h-16 rounded-full border-2 border-blue-300"
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              :is-active="activeTab === 'requests'"
+              :badge-count="waiting.length"
+              @click="activeTab = 'requests'"
+            >
+              My Requests
+            </TabsTrigger>
+            <TabsTrigger
+              :is-active="activeTab === 'transactions'"
+              :badge-count="active.filter(item => item.type === 'transaction').length"
+              @click="activeTab = 'transactions'"
+            >
+              My Transactions
+            </TabsTrigger>
+            <TabsTrigger
+              :is-active="activeTab === 'listings'"
+              :badge-count="yourListings.length"
+              @click="activeTab = 'listings'"
+            >
+              My Listings
+            </TabsTrigger>
+          </TabsList>
+
+          <!-- Overview Tab -->
+          <TabsContent :is-active="activeTab === 'overview'">
+            <div class="space-y-8">
+              <!-- ACTION REQUIRED -->
+              <section v-if="actionRequired.length > 0" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
+                <h2 class="text-2xl font-bold text-amber-900 mb-5 flex items-center gap-3">
+                  <span class="bg-amber-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                    {{ actionRequired.length }}
+                  </span>
+                  Action Required
+                </h2>
+                <div class="space-y-4">
+                  <ActivityCard
+                    v-for="item in actionRequired"
+                    :key="item.id"
+                    :item="item"
+                    @action="handleAction"
                   />
                 </div>
+              </section>
 
-                <!-- Content -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 class="font-semibold text-gray-900 text-base">
-                        {{ match.otherUserProfile?.displayName || `User ${match.otherUserId.slice(0, 8)}...` }}
-                      </h3>
-                      <p class="text-sm text-gray-600">
-                        {{ match.otherUserProfile?.dorm || 'No dorm set' }}
-                      </p>
+              <!-- CHATS (MATCHES) -->
+              <section v-if="matches.length > 0" class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
+                <h2 class="text-2xl font-bold text-blue-900 mb-5 flex items-center gap-3">
+                  <MessageCircle class="w-6 h-6 text-blue-600" />
+                  Chats
+                </h2>
+                <p class="text-blue-800 mb-5 text-sm">Connect with users you've matched with for item exchanges</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card
+                    v-for="match in matches"
+                    :key="match.id"
+                    class="p-5 hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20 group"
+                  >
+                    <div class="flex gap-4">
+                      <!-- Other User Avatar -->
+                      <div class="flex-shrink-0">
+                        <div class="relative">
+                          <img
+                            :src="getUserAvatar(match.otherUserProfile, match.otherUserId)"
+                            :alt="match.otherUserProfile?.displayName || 'User'"
+                            class="w-16 h-16 rounded-full border-2 border-primary/30 group-hover:border-primary/50 transition-colors"
+                          />
+                          <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full border-2 border-card flex items-center justify-center">
+                            <MessageCircle class="w-3 h-3 text-primary-foreground" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Content -->
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between mb-3">
+                          <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-foreground text-base mb-1 truncate">
+                              {{ match.otherUserProfile?.displayName || `User ${match.otherUserId.slice(0, 8)}...` }}
+                            </h3>
+                            <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <MapPin class="w-3.5 h-3.5" />
+                              <span>{{ match.otherUserProfile?.dorm || 'No dorm set' }}</span>
+                            </div>
+                          </div>
+                          <Badge variant="secondary" class="ml-3 shrink-0">
+                            {{ getMatchStatusLabel(match.status) }}
+                          </Badge>
+                        </div>
+
+                        <!-- Item Info -->
+                        <div class="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg border border-border">
+                          <div class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border border-border">
+                            <ImageWithFallback
+                              :src="match.itemImage || `https://via.placeholder.com/150?text=${encodeURIComponent(match.itemTitle)}`"
+                              :alt="match.itemTitle"
+                              class="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-foreground truncate mb-0.5">{{ match.itemTitle }}</p>
+                            <p class="text-xs text-muted-foreground">
+                              {{ match.matchType === 'accepted-request' ? 'Request accepted' : 'Active transaction' }}
+                            </p>
+                          </div>
+                        </div>
+
+                        <!-- Communication Actions -->
+                        <div class="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            class="flex-1 rounded-lg relative"
+                            @click="openChat(match)"
+                          >
+                            <MessageCircle class="w-4 h-4 mr-2" />
+                            Chat
+                            <span
+                              v-if="getUnreadCount(match) > 0"
+                              class="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold border-2 border-card shadow-sm"
+                            >
+                              {{ getUnreadCount(match) > 9 ? '9+' : getUnreadCount(match) }}
+                            </span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            class="flex-1 rounded-lg"
+                            @click="router.push(`/items/${match.itemId}`)"
+                          >
+                            View Item
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <Badge variant="secondary" class="ml-2">
-                      {{ getMatchStatusLabel(match.status) }}
-                    </Badge>
+                  </Card>
+                </div>
+              </section>
+
+              <!-- Empty Overview State -->
+              <div v-if="actionRequired.length === 0 && matches.length === 0" class="text-center py-16">
+                <p class="text-muted-foreground text-lg">No items requiring action at this time.</p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <!-- My Requests Tab -->
+          <TabsContent :is-active="activeTab === 'requests'">
+            <div class="space-y-8">
+              <!-- WAITING FOR RESPONSE -->
+              <section v-if="waiting.length > 0">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-10 h-10 rounded-xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+                    <Clock class="w-5 h-5 text-amber-600" />
                   </div>
-
-                  <!-- Item Info -->
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-md overflow-hidden">
-                      <ImageWithFallback
-                        :src="match.itemImage || `https://via.placeholder.com/150?text=${encodeURIComponent(match.itemTitle)}`"
-                        :alt="match.itemTitle"
-                        class="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900 truncate">{{ match.itemTitle }}</p>
-                      <p class="text-xs text-gray-500">
-                        {{ match.matchType === 'accepted-request' ? 'Request accepted' : 'Active transaction' }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <!-- Communication Placeholder -->
-                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p class="text-xs text-blue-800 mb-2">
-                      <MessageCircle class="w-4 h-4 inline mr-1" />
-                      Ready to coordinate pickup and exchange details
-                    </p>
-                    <div class="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        class="flex-1 text-xs relative"
-                        @click="openChat(match)"
-                      >
-                        <MessageCircle class="w-3 h-3 mr-1" />
-                        Chat
-                        <span
-                          v-if="getUnreadCount(match) > 0"
-                          class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold border-2 border-white"
-                        >
-                          {{ getUnreadCount(match) > 9 ? '9+' : getUnreadCount(match) }}
-                        </span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        class="flex-1 text-xs"
-                        @click="router.push(`/items/${match.itemId}`)"
-                      >
-                        View Item
-                      </Button>
-                    </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-foreground">
+                      Waiting for Response
+                    </h2>
+                    <p class="text-sm text-muted-foreground">{{ waiting.length }} request{{ waiting.length !== 1 ? 's' : '' }} pending</p>
                   </div>
                 </div>
+                <div class="space-y-4">
+                  <ActivityCard
+                    v-for="item in waiting"
+                    :key="item.id"
+                    :item="item"
+                    @action="handleAction"
+                  />
+                </div>
+              </section>
+
+              <!-- ACTIVE REQUESTS (Accepted) -->
+              <section v-if="active.filter(item => item.type === 'outgoing-request').length > 0">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-10 h-10 rounded-xl bg-green-50 border-2 border-green-200 flex items-center justify-center">
+                    <CheckCircle2 class="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-foreground">
+                      Active Requests
+                    </h2>
+                    <p class="text-sm text-muted-foreground">{{ active.filter(item => item.type === 'outgoing-request').length }} request{{ active.filter(item => item.type === 'outgoing-request').length !== 1 ? 's' : '' }} accepted</p>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <ActivityCard
+                    v-for="item in active.filter(item => item.type === 'outgoing-request')"
+                    :key="item.id"
+                    :item="item"
+                    @action="handleAction"
+                  />
+                </div>
+              </section>
+
+              <!-- RECENT REQUESTS -->
+              <section v-if="recentRequests.length > 0">
+                <details class="group">
+                  <summary class="cursor-pointer list-none">
+                    <div class="flex items-center gap-3 mb-5">
+                      <div class="w-10 h-10 rounded-xl bg-muted border-2 border-border flex items-center justify-center group-open:bg-muted/50 transition-colors">
+                        <XCircle class="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div class="flex-1">
+                        <h2 class="text-xl font-bold text-muted-foreground group-open:text-foreground transition-colors inline-flex items-center gap-2">
+                          Recent Requests
+                          <svg class="w-5 h-5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </h2>
+                        <p class="text-sm text-muted-foreground">{{ recentRequests.length }} completed or cancelled</p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div class="space-y-4 opacity-75">
+                    <ActivityCard
+                      v-for="item in recentRequests"
+                      :key="item.id"
+                      :item="item"
+                      @action="handleAction"
+                    />
+                  </div>
+                </details>
+              </section>
+
+              <!-- Empty Requests State -->
+              <div v-if="waiting.length === 0 && active.filter(item => item.type === 'outgoing-request').length === 0 && recentRequests.length === 0" class="text-center py-16">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                  <Send class="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 class="text-xl font-semibold text-foreground mb-2">No Requests Yet</h3>
+                <p class="text-muted-foreground mb-6">Start browsing items to make your first request!</p>
+                <Button @click="$router.push('/items')" class="rounded-xl">Browse Items</Button>
               </div>
-            </Card>
-          </div>
-        </section>
-
-        <!-- ACTION REQUIRED -->
-        <section v-if="actionRequired.length > 0" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
-          <h2 class="text-2xl font-bold text-amber-900 mb-5 flex items-center gap-3">
-            <span class="bg-amber-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-              {{ actionRequired.length }}
-            </span>
-            Action Required
-          </h2>
-          <div class="space-y-4">
-            <ActivityCard
-              v-for="item in actionRequired"
-              :key="item.id"
-              :item="item"
-              @action="handleAction"
-            />
-          </div>
-        </section>
-
-        <!-- WAITING FOR RESPONSE -->
-        <section v-if="waiting.length > 0">
-          <h2 class="text-xl font-bold text-foreground mb-5">
-            Waiting for Response ({{ waiting.length }})
-          </h2>
-          <div class="space-y-4">
-            <ActivityCard
-              v-for="item in waiting"
-              :key="item.id"
-              :item="item"
-              @action="handleAction"
-            />
-          </div>
-        </section>
-
-        <!-- ACTIVE (IN PROGRESS) -->
-        <section v-if="active.length > 0">
-          <h2 class="text-xl font-bold text-foreground mb-5">
-            Active ({{ active.length }})
-          </h2>
-          <div class="space-y-4">
-            <ActivityCard
-              v-for="item in active"
-              :key="item.id"
-              :item="item"
-              @action="handleAction"
-            />
-          </div>
-        </section>
-
-        <!-- YOUR LISTINGS -->
-        <section v-if="yourListings.length > 0">
-          <h2 class="text-xl font-bold text-foreground mb-5">
-            Your Listings ({{ yourListings.length }})
-          </h2>
-          <div class="space-y-4">
-            <ActivityCard
-              v-for="item in yourListings"
-              :key="item.id"
-              :item="item"
-              @action="handleAction"
-            />
-          </div>
-        </section>
-
-        <!-- RECENT (Completed/Cancelled) -->
-        <section v-if="recent.length > 0">
-          <details class="group">
-            <summary class="cursor-pointer list-none">
-              <h2 class="text-xl font-bold text-muted-foreground mb-5 inline-flex items-center gap-2 hover:text-foreground transition-colors">
-                Recent ({{ recent.length }})
-                <svg class="w-5 h-5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </h2>
-            </summary>
-            <div class="space-y-4 opacity-75">
-              <ActivityCard
-                v-for="item in recent"
-                :key="item.id"
-                :item="item"
-                @action="handleAction"
-              />
             </div>
-          </details>
-        </section>
+          </TabsContent>
+
+          <!-- My Transactions Tab -->
+          <TabsContent :is-active="activeTab === 'transactions'">
+            <div class="space-y-8">
+              <!-- ACTIVE TRANSACTIONS -->
+              <section v-if="active.filter(item => item.type === 'transaction').length > 0">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-10 h-10 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                    <ArrowRightLeft class="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-foreground">
+                      Active Transactions
+                    </h2>
+                    <p class="text-sm text-muted-foreground">{{ active.filter(item => item.type === 'transaction').length }} transaction{{ active.filter(item => item.type === 'transaction').length !== 1 ? 's' : '' }} in progress</p>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <ActivityCard
+                    v-for="item in active.filter(item => item.type === 'transaction')"
+                    :key="item.id"
+                    :item="item"
+                    @action="handleAction"
+                  />
+                </div>
+              </section>
+
+              <!-- RECENT TRANSACTIONS -->
+              <section v-if="recentTransactions.length > 0">
+                <details class="group">
+                  <summary class="cursor-pointer list-none">
+                    <div class="flex items-center gap-3 mb-5">
+                      <div class="w-10 h-10 rounded-xl bg-muted border-2 border-border flex items-center justify-center group-open:bg-muted/50 transition-colors">
+                        <CheckCircle2 class="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div class="flex-1">
+                        <h2 class="text-xl font-bold text-muted-foreground group-open:text-foreground transition-colors inline-flex items-center gap-2">
+                          Recent Transactions
+                          <svg class="w-5 h-5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </h2>
+                        <p class="text-sm text-muted-foreground">{{ recentTransactions.length }} completed or cancelled</p>
+                      </div>
+                    </div>
+                  </summary>
+                  <div class="space-y-4 opacity-75">
+                    <ActivityCard
+                      v-for="item in recentTransactions"
+                      :key="item.id"
+                      :item="item"
+                      @action="handleAction"
+                    />
+                  </div>
+                </details>
+              </section>
+
+              <!-- Empty Transactions State -->
+              <div v-if="active.filter(item => item.type === 'transaction').length === 0 && recentTransactions.length === 0" class="text-center py-16">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                  <ArrowRightLeft class="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 class="text-xl font-semibold text-foreground mb-2">No Transactions Yet</h3>
+                <p class="text-muted-foreground mb-6">Transactions will appear here once your requests are accepted.</p>
+                <Button @click="$router.push('/items')" class="rounded-xl">Browse Items</Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <!-- My Listings Tab -->
+          <TabsContent :is-active="activeTab === 'listings'">
+            <div class="space-y-8">
+              <!-- YOUR LISTINGS -->
+              <section v-if="yourListings.length > 0">
+                <div class="flex items-center gap-3 mb-5">
+                  <div class="w-10 h-10 rounded-xl bg-purple-50 border-2 border-purple-200 flex items-center justify-center">
+                    <List class="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-foreground">
+                      Your Listings
+                    </h2>
+                    <p class="text-sm text-muted-foreground">{{ yourListings.length }} item{{ yourListings.length !== 1 ? 's' : '' }} listed</p>
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <ActivityCard
+                    v-for="item in yourListings"
+                    :key="item.id"
+                    :item="item"
+                    @action="handleAction"
+                  />
+                </div>
+              </section>
+
+              <!-- Empty Listings State -->
+              <div v-else class="text-center py-16">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                  <List class="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 class="text-xl font-semibold text-foreground mb-2">No Listings Yet</h3>
+                <p class="text-muted-foreground mb-6">Share items with the MIT community by creating your first listing!</p>
+                <Button @click="$router.push('/items/new')" class="rounded-xl">List Your First Item</Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
 
@@ -238,25 +468,31 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRequestStore } from '@/stores/requestStore'
 import { useTransactionStore } from '@/stores/transactionStore'
-import { Button, Card, Badge } from '@/components/ui'
+import { Button, Card, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui'
 import { useRouter } from 'vue-router'
 import ActivityCard from '@/components/ActivityCard.vue'
 import ChatModal from '@/components/ChatModal.vue'
 import * as itemsAPI from '@/api/items'
-import * as itemListingAPI from '@/api/itemListing'
+import { useItemListingStore } from '@/stores/itemListingStore'
 import * as userProfileAPI from '@/api/userProfile'
-import { MessageCircle } from 'lucide-vue-next'
+import { MessageCircle, MapPin, Clock, CheckCircle2, XCircle, ArrowRightLeft, List, Send } from 'lucide-vue-next'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import { useMessageStore } from '@/stores/messageStore'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const requestStore = useRequestStore()
 const transactionStore = useTransactionStore()
+const itemListingStore = useItemListingStore()
 const messageStore = useMessageStore()
+const toast = useToast()
 
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// Tab state
+const activeTab = ref<'overview' | 'requests' | 'transactions' | 'listings'>('overview')
 
 // Chat modal state
 const chatModalOpen = ref(false)
@@ -533,6 +769,71 @@ const yourListings = computed(() => {
   }))
 })
 
+// Computed properties for tab organization
+const recentRequests = computed(() => {
+  const items: ActivityItem[] = []
+  
+  requestStore.incomingRequests
+    .filter((r) => ['REJECTED', 'CANCELLED'].includes(r.status))
+    .forEach((req) => {
+      items.push({
+        id: `req-in-recent-${req._id}`,
+        type: 'incoming-request',
+        title: req.itemDetails?.title || 'Item',
+        subtitle: `Request ${req.status.toLowerCase()}`,
+        status: req.status,
+        statusBadge: { text: req.status, variant: 'destructive' },
+        date: new Date(req.createdAt),
+        actions: [],
+        rawData: req,
+      })
+    })
+
+  requestStore.outgoingRequests
+    .filter((r) => ['REJECTED', 'CANCELLED'].includes(r.status))
+    .forEach((req) => {
+      items.push({
+        id: `req-out-recent-${req._id}`,
+        type: 'outgoing-request',
+        title: req.itemDetails?.title || 'Item',
+        subtitle: `Your request ${req.status.toLowerCase()}`,
+        status: req.status,
+        statusBadge: { text: req.status, variant: 'destructive' },
+        date: new Date(req.createdAt),
+        actions: [],
+        rawData: req,
+      })
+    })
+
+  return items.sort((a, b) => b.date.getTime() - a.date.getTime())
+})
+
+const activeTransactions = computed(() => {
+  return transactionStore.transactions.filter((t) => t.status === 'IN_PROGRESS')
+})
+
+const recentTransactions = computed(() => {
+  const items: ActivityItem[] = []
+  
+  transactionStore.transactions
+    .filter((t) => ['COMPLETED', 'CANCELLED'].includes(t.status))
+    .forEach((tx) => {
+      items.push({
+        id: `tx-recent-${tx._id}`,
+        type: 'transaction',
+        title: tx.itemDetails?.title || 'Item',
+        subtitle: tx.isLending ? 'Lent out' : 'Borrowed',
+        status: tx.status,
+        statusBadge: { text: tx.status, variant: tx.status === 'COMPLETED' ? 'secondary' : 'destructive' },
+        date: new Date(tx.createdAt),
+        actions: [],
+        rawData: tx,
+      })
+    })
+
+  return items.sort((a, b) => b.date.getTime() - a.date.getTime())
+})
+
 function getListingStatusBadge(status: string): { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } {
   switch (status) {
     case 'AVAILABLE':
@@ -591,7 +892,7 @@ async function fetchMatches() {
     // Helper to get item photo
     async function getItemPhoto(itemId: string): Promise<string | null> {
       try {
-        const photos = await itemListingAPI.getPhotosByItem({ item: itemId })
+        const photos = await itemListingStore.getPhotosByItem(itemId)
         if (photos && photos.length > 0) {
           const sorted = photos.sort((a, b) => (a.order || 0) - (b.order || 0))
           return sorted[0].photoUrl
@@ -776,7 +1077,7 @@ async function fetchUserListings() {
     
     for (const item of items) {
       try {
-        const listing = await itemListingAPI.getListingByItem({ item: item._id })
+        const listing = await itemListingStore.getListingByItem(item._id)
         if (listing) {
           listingsWithDetails.push({
             itemId: item._id,
@@ -848,8 +1149,18 @@ function getMatchStatusLabel(status: string): string {
 }
 
 function openChat(match: Match) {
+  console.log('💬 openChat called:', {
+    matchId: match.id,
+    otherUserId: match.otherUserId,
+    itemId: match.itemId,
+    transactionId: match.transactionId
+  })
   selectedMatch.value = match
   chatModalOpen.value = true
+  console.log('✅ Chat modal state updated:', {
+    chatModalOpen: chatModalOpen.value,
+    hasSelectedMatch: !!selectedMatch.value
+  })
 }
 
 function closeChat() {
@@ -895,9 +1206,9 @@ async function handleAcceptRequest(requestId: string) {
     // - requestStore.incomingRequests (via handleRequestUpdate)
     // - transactionStore.transactions (via handleTransactionUpdate)
     // - matches will update reactively via watcher
-    alert('Request accepted! A transaction has been created.')
+    toast.success('Request accepted! A transaction has been created.')
   } catch (err) {
-    alert('Failed to accept request. Please try again.')
+    toast.error('Failed to accept request. Please try again.')
   }
 }
 
@@ -905,8 +1216,9 @@ async function handleRejectRequest(requestId: string) {
   if (!confirm('Are you sure you want to reject this request?')) return
   try {
     await requestStore.rejectRequest(requestId)
+    toast.success('Request rejected.')
   } catch (err) {
-    alert('Failed to reject request. Please try again.')
+    toast.error('Failed to reject request. Please try again.')
   }
 }
 
@@ -914,8 +1226,9 @@ async function handleCancelRequest(requestId: string) {
   if (!confirm('Are you sure you want to cancel this request?')) return
   try {
     await requestStore.cancelRequest(requestId, authStore.userId!)
+    toast.success('Request cancelled.')
   } catch (err) {
-    alert('Failed to cancel request. Please try again.')
+    toast.error('Failed to cancel request. Please try again.')
   }
 }
 
@@ -924,9 +1237,9 @@ async function handleMarkPickedUp(transactionId: string) {
     await transactionStore.markPickedUp(transactionId)
     // SSE will automatically update transactionStore.transactions
     // matches will update reactively via watcher
-    alert('Pickup confirmed!')
+    toast.success('Pickup confirmed!')
   } catch (err) {
-    alert('Failed to confirm pickup. Please try again.')
+    toast.error('Failed to confirm pickup. Please try again.')
   }
 }
 
@@ -935,9 +1248,9 @@ async function handleMarkReturned(transactionId: string) {
     await transactionStore.markReturned(transactionId)
     // SSE will automatically update transactionStore.transactions
     // matches will update reactively via watcher
-    alert('Marked as returned! Waiting for owner confirmation.')
+    toast.success('Marked as returned! Waiting for owner confirmation.')
   } catch (err) {
-    alert('Failed to mark as returned. Please try again.')
+    toast.error('Failed to mark as returned. Please try again.')
   }
 }
 
@@ -946,9 +1259,9 @@ async function handleConfirmReturn(transactionId: string) {
     await transactionStore.confirmReturn(transactionId)
     // SSE will automatically update transactionStore.transactions
     // matches will update reactively via watcher
-    alert('Return confirmed! Transaction completed.')
+    toast.success('Return confirmed! Transaction completed.')
   } catch (err) {
-    alert('Failed to confirm return. Please try again.')
+    toast.error('Failed to confirm return. Please try again.')
   }
 }
 
@@ -956,9 +1269,9 @@ async function handleCancelTransaction(transactionId: string) {
   if (!confirm('Are you sure you want to cancel this transaction?')) return
   try {
     await transactionStore.cancelTransaction(transactionId)
-    alert('Transaction cancelled.')
+    toast.success('Transaction cancelled.')
   } catch (err) {
-    alert('Failed to cancel transaction. Please try again.')
+    toast.error('Failed to cancel transaction. Please try again.')
   }
 }
 </script>

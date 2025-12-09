@@ -266,27 +266,41 @@ export const useMessageStore = defineStore('message', () => {
 
       const conversation = getConversation(userId, otherUserId, itemId)
       
-      // Merge backend messages with local messages
-      // Use a Set to track which message IDs we've seen
-      const existingIds = new Set(conversation.messages.map((m) => m.backendId || m.id))
+      // Create a map of existing messages by backend ID for quick lookup
+      const existingMessagesMap = new Map<string, Message>()
+      conversation.messages.forEach((msg) => {
+        if (msg.backendId) {
+          existingMessagesMap.set(msg.backendId, msg)
+        }
+      })
 
       for (const backendMsg of backendMessages) {
-        // Skip if we already have this message
-        if (existingIds.has(backendMsg._id)) continue
+        const existingMessage = existingMessagesMap.get(backendMsg._id)
+        
+        if (existingMessage) {
+          // Update existing message with latest read status from backend
+          // A message is read if readAt is not null AND the message is to the current user
+          const isToCurrentUser = backendMsg.author !== userId
+          existingMessage.read = isToCurrentUser ? (backendMsg.readAt !== null) : true
+          // Also update other fields in case they changed
+          existingMessage.content = backendMsg.content
+          existingMessage.timestamp = new Date(backendMsg.createdAt)
+        } else {
+          // New message - convert backend message to local format
+          const isToCurrentUser = backendMsg.author !== userId
+          const message: Message = {
+            id: backendMsg._id,
+            backendId: backendMsg._id,
+            fromUserId: backendMsg.author,
+            toUserId: backendMsg.author === userId ? otherUserId : userId,
+            content: backendMsg.content,
+            timestamp: new Date(backendMsg.createdAt),
+            // Message is read if: it's from current user (always read) OR readAt is set
+            read: !isToCurrentUser || backendMsg.readAt !== null,
+          }
 
-        // Convert backend message to local format
-        const message: Message = {
-          id: backendMsg._id,
-          backendId: backendMsg._id,
-          fromUserId: backendMsg.author,
-          toUserId: backendMsg.author === userId ? otherUserId : userId,
-          content: backendMsg.content,
-          timestamp: new Date(backendMsg.createdAt),
-          read: backendMsg.readAt !== null,
+          conversation.messages.push(message)
         }
-
-        conversation.messages.push(message)
-        existingIds.add(backendMsg._id)
       }
 
       // Sort messages by timestamp
@@ -412,18 +426,45 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   // Mark messages as read (syncs with backend)
-  async function markAsRead(userId: string, otherUserId: string, itemId: string) {
+  async function markAsRead(userId: string, otherUserId: string, itemId: string, transactionId?: string | null) {
+    console.log('📖 markAsRead called', { userId, otherUserId, itemId, transactionId })
     const conversation = getConversation(userId, otherUserId, itemId)
     
-    // Mark locally
+    // If we don't have a backend conversation ID yet, try to ensure it exists
+    if (!conversation.backendConversationId) {
+      console.log('⚠️ No backend conversation ID found, attempting to ensure conversation exists...')
+      const backendConvId = await ensureBackendConversation(
+        userId,
+        otherUserId,
+        itemId,
+        transactionId || null
+      )
+      if (backendConvId) {
+        console.log('✅ Backend conversation ID obtained:', backendConvId)
+      } else {
+        console.warn('⚠️ Could not obtain backend conversation ID, will mark locally only')
+      }
+    }
+    
+    // Mark locally - only messages sent TO the current user that are unread
     const unreadMessages = conversation.messages.filter(
       (msg) => msg.toUserId === userId && !msg.read
     )
     
-    unreadMessages.forEach((msg) => {
-      msg.read = true
-    })
-    saveConversations()
+    console.log('📖 Found unread messages:', unreadMessages.length, unreadMessages.map(m => ({
+      id: m.id,
+      from: m.fromUserId,
+      to: m.toUserId,
+      read: m.read
+    })))
+    
+    if (unreadMessages.length > 0) {
+      unreadMessages.forEach((msg) => {
+        msg.read = true
+      })
+      saveConversations()
+      console.log('✅ Marked', unreadMessages.length, 'messages as read locally')
+    }
 
     // Mark on backend if we have a conversation ID
     if (conversation.backendConversationId) {
@@ -431,17 +472,23 @@ export const useMessageStore = defineStore('message', () => {
         // Get accessToken from localStorage for authentication
         const accessToken = localStorage.getItem('accessToken')
         if (!accessToken) {
-          console.warn('No access token available for marking conversation as read')
+          console.warn('⚠️ No access token available for marking conversation as read')
           return
         }
 
+        console.log('🌐 Marking conversation as read on backend:', conversation.backendConversationId)
         await communicationAPI.markConversationRead({
           conversation: conversation.backendConversationId,
           accessToken,
         })
+        console.log('✅ Successfully marked conversation as read on backend')
       } catch (err) {
-        console.error('Failed to mark conversation as read on backend:', err)
+        console.error('❌ Failed to mark conversation as read on backend:', err)
+        // Re-throw so caller knows it failed
+        throw err
       }
+    } else {
+      console.warn('⚠️ No backend conversation ID, cannot mark as read on backend')
     }
   }
 
@@ -480,7 +527,7 @@ export const useMessageStore = defineStore('message', () => {
     try {
       const { useNotificationStore } = await import('@/stores/notificationStore')
       const notificationStore = useNotificationStore()
-      notificationStore.showMessageNotification(backendMessage)
+      await notificationStore.showMessageNotification(backendMessage)
     } catch (err) {
       console.error('Failed to show message notification:', err)
     }
@@ -587,6 +634,7 @@ export const useMessageStore = defineStore('message', () => {
     getConversationUnreadCount,
     handleMessage,
     loadConversationFromBackend,
+    ensureBackendConversation, // Export for debugging/testing
   }
 })
 

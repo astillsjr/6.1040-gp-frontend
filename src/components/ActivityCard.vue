@@ -1,8 +1,14 @@
 <template>
-  <Card class="p-4 hover:shadow-md transition-shadow">
-    <div class="flex gap-4">
+  <Card class="p-6 hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20 group relative overflow-hidden">
+    <!-- Status indicator bar -->
+    <div 
+      class="absolute top-0 left-0 right-0 h-1"
+      :class="getStatusBarColor(item.statusBadge.variant)"
+    ></div>
+    
+    <div class="flex gap-5">
       <!-- Item Image -->
-      <div class="flex-shrink-0 w-20 h-20 bg-gray-200 rounded-md overflow-hidden">
+      <div class="flex-shrink-0 w-28 h-28 bg-muted rounded-xl overflow-hidden border-2 border-border group-hover:border-primary/30 transition-colors shadow-sm">
         <ImageWithFallback
           :src="itemImage"
           :alt="item.title"
@@ -12,33 +18,54 @@
 
       <!-- Content -->
       <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between mb-2">
-          <div class="flex-1">
-            <h3 class="font-semibold text-gray-900 text-base">{{ item.title }}</h3>
-            <p class="text-sm text-gray-600">{{ item.subtitle }}</p>
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-2">
+              <component 
+                :is="getTypeIcon(item.type)" 
+                class="w-5 h-5 shrink-0"
+                :class="getTypeIconColor(item.type)"
+              />
+              <h3 class="font-semibold text-foreground text-lg truncate">{{ item.title }}</h3>
+            </div>
+            <p class="text-sm text-muted-foreground flex items-center gap-1.5">
+              <component 
+                :is="getSubtitleIcon(item.type, item.status)" 
+                class="w-3.5 h-3.5"
+              />
+              <span>{{ item.subtitle }}</span>
+            </p>
           </div>
-          <Badge :variant="item.statusBadge.variant" class="ml-2">
+          <Badge :variant="item.statusBadge.variant" class="ml-3 shrink-0 font-medium">
             {{ item.statusBadge.text }}
           </Badge>
         </div>
 
         <!-- Time Info -->
-        <div v-if="item.timeInfo" class="text-xs text-gray-500 mb-2">
-          {{ item.timeInfo }}
+        <div v-if="item.timeInfo" class="flex items-center gap-2 text-xs text-muted-foreground mb-3 bg-muted/30 px-3 py-1.5 rounded-lg w-fit">
+          <Clock class="w-3.5 h-3.5" />
+          <span>{{ item.timeInfo }}</span>
         </div>
 
         <!-- Notes -->
-        <div v-if="item.notes" class="bg-gray-50 p-2 rounded text-sm text-gray-700 mb-3">
-          <strong>Note:</strong> {{ item.notes }}
+        <div v-if="item.notes" class="bg-muted/50 border border-border rounded-lg p-3 text-sm text-foreground mb-4">
+          <div class="flex items-start gap-2">
+            <FileText class="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div class="flex-1">
+              <strong class="text-foreground font-medium">Note:</strong>
+              <span class="text-muted-foreground ml-1">{{ item.notes }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- Actions -->
-        <div v-if="item.actions.length > 0" class="flex gap-2 flex-wrap">
+        <div v-if="item.actions.length > 0" class="flex gap-2 flex-wrap pt-2 border-t border-border">
           <Button
             v-for="(action, idx) in item.actions"
             :key="idx"
             size="sm"
             :variant="action.variant || 'default'"
+            class="rounded-lg font-medium"
             @click="action.handler"
           >
             {{ action.label }}
@@ -53,7 +80,8 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { Card, Badge, Button } from '@/components/ui'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
-import * as itemListingAPI from '@/api/itemListing'
+import { Clock, FileText, Send, Package, List, ArrowRightLeft, CheckCircle2, XCircle, AlertCircle } from 'lucide-vue-next'
+import { useItemListingStore } from '@/stores/itemListingStore'
 
 interface ActivityItem {
   id: string
@@ -78,6 +106,7 @@ defineEmits<{
   action: [payload: { type: string; id: string; action: string }]
 }>()
 
+const itemListingStore = useItemListingStore()
 const itemImage = ref<string>(`https://via.placeholder.com/150?text=${encodeURIComponent(props.item.title)}`)
 const isLoadingImage = ref(false)
 
@@ -106,7 +135,7 @@ async function fetchItemPhoto() {
 
   isLoadingImage.value = true
   try {
-    const photos = await itemListingAPI.getPhotosByItem({ item: itemId.value })
+    const photos = await itemListingStore.getPhotosByItem(itemId.value)
     if (photos && photos.length > 0) {
       // Sort by order and get first photo
       const sorted = photos.sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -142,5 +171,67 @@ onMounted(() => {
     fetchItemPhoto()
   }
 })
+
+// Helper functions for icons and colors
+function getTypeIcon(type: string) {
+  switch (type) {
+    case 'incoming-request':
+      return Send
+    case 'outgoing-request':
+      return Send
+    case 'transaction':
+      return ArrowRightLeft
+    case 'listing':
+      return List
+    default:
+      return Package
+  }
+}
+
+function getTypeIconColor(type: string) {
+  switch (type) {
+    case 'incoming-request':
+      return 'text-blue-600'
+    case 'outgoing-request':
+      return 'text-primary'
+    case 'transaction':
+      return 'text-green-600'
+    case 'listing':
+      return 'text-purple-600'
+    default:
+      return 'text-muted-foreground'
+  }
+}
+
+function getSubtitleIcon(type: string, status: string) {
+  if (status === 'PENDING' && type === 'outgoing-request') {
+    return Clock
+  }
+  if (status === 'ACCEPTED') {
+    return CheckCircle2
+  }
+  if (['REJECTED', 'CANCELLED'].includes(status)) {
+    return XCircle
+  }
+  if (status === 'IN_PROGRESS') {
+    return Package
+  }
+  return AlertCircle
+}
+
+function getStatusBarColor(variant: string) {
+  switch (variant) {
+    case 'default':
+      return 'bg-primary'
+    case 'secondary':
+      return 'bg-secondary'
+    case 'destructive':
+      return 'bg-destructive'
+    case 'outline':
+      return 'bg-muted'
+    default:
+      return 'bg-border'
+  }
+}
 </script>
 

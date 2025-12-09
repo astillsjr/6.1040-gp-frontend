@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <NavBar />
-    <NotificationCard />
+    <Toast />
     <main class="main-content">
       <router-view />
     </main>
@@ -10,7 +10,7 @@
 
 <script setup>
 import NavBar from './components/NavBar.vue'
-import NotificationCard from './components/NotificationCard.vue'
+import { Toast } from './components/ui'
 </script>
 
 <style scoped>

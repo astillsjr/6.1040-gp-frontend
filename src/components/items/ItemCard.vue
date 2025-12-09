@@ -1,7 +1,7 @@
 <template>
   <div
     @click="$emit('click')"
-    class="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-sustainable-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/30 group"
+    class="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-sustainable-lg transition-all duration-300 cursor-pointer border border-border hover:border-primary/30 group relative"
   >
     <div class="aspect-[4/3] relative overflow-hidden bg-muted">
       <ImageWithFallback
@@ -9,6 +9,16 @@
         :alt="item.name"
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
       />
+      <!-- Unauthenticated User Badge -->
+      <div
+        v-if="!isAuthenticated"
+        class="absolute top-3 right-3 bg-primary/90 backdrop-blur-sm text-primary-foreground text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md"
+      >
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Sign up to request
+      </div>
     </div>
     <div class="p-5">
       <div class="flex items-start justify-between gap-2 mb-3">
@@ -38,9 +48,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/authStore'
 import { Badge } from '@/components/ui'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import { MapPin, Star } from 'lucide-vue-next'
+
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 export interface Item {
   id: string

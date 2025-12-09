@@ -3,6 +3,7 @@
     v-if="isOpen"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     @click.self="close"
+    data-chat-modal="true"
   >
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4">
       <!-- Header -->
@@ -120,6 +121,9 @@ import { Button, Textarea } from '@/components/ui'
 import { X, Send, MessageCircle } from 'lucide-vue-next'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import * as userProfileAPI from '@/api/userProfile'
+import { useToast } from '@/composables/useToast'
+
+console.log('📦 ChatModal component script loaded')
 
 interface Props {
   isOpen: boolean
@@ -139,6 +143,7 @@ const emit = defineEmits<{
 
 const messageStore = useMessageStore()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const currentUserId = computed(() => authStore.userId || '')
 const messageInput = ref('')
@@ -179,31 +184,59 @@ watch(messages, () => {
 }, { deep: true })
 
 // Scroll to bottom when modal opens and load conversation from backend
-watch(() => props.isOpen, async (isOpen) => {
+watch(() => props.isOpen, async (isOpen, oldValue) => {
+  console.log('👀 ChatModal watch triggered:', { 
+    isOpen, 
+    oldValue,
+    currentUserId: currentUserId.value,
+    otherUserId: props.otherUserId,
+    itemId: props.itemId
+  })
+  
   if (isOpen && currentUserId.value) {
+    console.log('✅ ChatModal is open and user is authenticated, loading conversation...')
     // Load conversation from backend
     try {
+      console.log('📂 Loading conversation from backend...', {
+        userId: currentUserId.value,
+        otherUserId: props.otherUserId,
+        itemId: props.itemId,
+        transactionId: props.transactionId
+      })
+      
       await messageStore.loadConversationFromBackend(
         currentUserId.value,
         props.otherUserId,
         props.itemId,
         props.transactionId || null
       )
-    } catch (err) {
-      console.error('Failed to load conversation from backend:', err)
-    }
-    
-    nextTick(() => {
+      
+      console.log('✅ Conversation loaded, marking as read...')
+      
+      // Wait for messages to be loaded, then mark as read
+      await nextTick()
       scrollToBottom()
-      // Mark messages as read when opening
-      messageStore.markAsRead(
+      
+      // Mark messages as read when opening (await to ensure it completes)
+      // Pass transactionId so it can ensure conversation exists if needed
+      console.log('📖 Calling markAsRead...')
+      await messageStore.markAsRead(
         currentUserId.value,
         props.otherUserId,
-        props.itemId
+        props.itemId,
+        props.transactionId || null
       )
+      console.log('✅ markAsRead completed')
+    } catch (err) {
+      console.error('❌ Failed to load conversation from backend:', err)
+    }
+  } else {
+    console.log('⚠️ ChatModal watch skipped:', { 
+      isOpen, 
+      hasUserId: !!currentUserId.value 
     })
   }
-})
+}, { immediate: true })
 
 // Watch for new messages from SSE and add them to the conversation
 // The messageStore.handleMessage() is called by SSE, but we need to integrate
@@ -220,6 +253,11 @@ watch(
 )
 
 onMounted(() => {
+  console.log('🎬 ChatModal mounted:', { 
+    isOpen: props.isOpen,
+    currentUserId: currentUserId.value,
+    otherUserId: props.otherUserId
+  })
   if (props.isOpen) {
     scrollToBottom()
   }
@@ -278,7 +316,7 @@ async function handleSendMessage() {
     scrollToBottom()
   } catch (err) {
     console.error('❌ Failed to send message:', err)
-    alert('Failed to send message. Please try again.')
+    toast.error('Failed to send message. Please try again.')
   } finally {
     isSending.value = false
   }

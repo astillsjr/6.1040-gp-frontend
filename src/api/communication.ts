@@ -102,7 +102,34 @@ export async function markMessageRead(
 export async function markConversationRead(
   data: MarkConversationReadRequest
 ): Promise<void> {
-  await apiClient.post(buildApiPath('Communication/markConversationRead'), data)
+  const endpoint = buildApiPath('Communication/markConversationRead')
+  const baseURL = apiClient.defaults.baseURL || ''
+  const fullUrl = baseURL.endsWith('/') 
+    ? `${baseURL}${endpoint.startsWith('/') ? endpoint.slice(1) : endpoint}`
+    : `${baseURL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+  
+  console.log('🌐 API: markConversationRead called with:', {
+    conversation: data.conversation,
+    hasAccessToken: !!data.accessToken,
+    endpoint,
+    baseURL,
+    fullUrl
+  })
+  console.log('📡 Making HTTP POST request to:', fullUrl)
+  console.log('📦 Request payload:', { conversation: data.conversation })
+  
+  try {
+    const response = await apiClient.post(endpoint, data)
+    console.log('✅ API: markConversationRead success - Status:', response.status)
+    console.log('📥 Response data:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('❌ API: markConversationRead error:', error)
+    if (error instanceof Error) {
+      console.error('❌ Error message:', error.message)
+    }
+    throw error
+  }
 }
 
 /**

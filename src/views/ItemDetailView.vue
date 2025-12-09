@@ -156,7 +156,38 @@
       <!-- Fixed Bottom Bar -->
       <div class="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border p-4 shadow-sustainable-lg">
         <div class="max-w-4xl mx-auto">
+          <!-- Unauthenticated User Prompt -->
+          <div v-if="!authStore.isAuthenticated" class="bg-primary/10 border-2 border-primary rounded-xl p-4 mb-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold text-foreground mb-1">Sign up to request this item</h3>
+                <p class="text-sm text-muted-foreground mb-3">Create a free account to borrow items from the MIT community</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <router-link
+                    :to="{ name: 'Register', query: { redirect: route.fullPath } }"
+                    class="inline-flex items-center justify-center gap-2 h-10 rounded-lg px-4 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+                  >
+                    Create Account
+                  </router-link>
+                  <router-link
+                    :to="{ name: 'Login', query: { redirect: route.fullPath } }"
+                    class="inline-flex items-center justify-center gap-2 h-10 rounded-lg px-4 text-sm font-medium border border-border bg-transparent text-foreground hover:bg-accent transition-all"
+                  >
+                    Already have an account? Sign in
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Authenticated User Request Button -->
           <Button
+            v-else
             class="w-full bg-primary text-primary-foreground hover:bg-recycling-green-dark h-14 rounded-xl font-semibold text-base shadow-sustainable hover:shadow-sustainable-lg"
             size="lg"
             :disabled="!canRequest"
@@ -178,14 +209,18 @@ import { useAuthStore } from '@/stores/authStore'
 import { Button, Badge, Card, Textarea } from '@/components/ui'
 import ImageWithFallback from '@/components/ImageWithFallback.vue'
 import { ArrowLeft, MapPin, Star, Clock, Calendar as CalendarIcon } from 'lucide-vue-next'
-import * as itemListingAPI from '@/api/itemListing'
-import * as itemRequestingAPI from '@/api/itemRequesting'
+import { useItemListingStore } from '@/stores/itemListingStore'
+import { useRequestStore } from '@/stores/requestStore'
 import type { AvailabilityWindow } from '@/api/itemListing'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const itemStore = useItemStore()
+const itemListingStore = useItemListingStore()
+const requestStore = useRequestStore()
 const authStore = useAuthStore()
+const toast = useToast()
 
 interface TimeSlot {
   label: string
@@ -242,7 +277,7 @@ watch(selectedDate, async (newDate) => {
 
 async function fetchAvailabilityWindows(itemId: string, date?: string) {
   try {
-    const windows = await itemListingAPI.getAvailabilityByItem({ item: itemId })
+    const windows = await itemListingStore.getAvailabilityByItem(itemId)
     
     if (date) {
       // Filter windows for selected date - show windows that span across the selected date
@@ -392,22 +427,21 @@ async function handleRequestBorrow() {
   try {
     const selectedSlot = availableTimeSlots.value[selectedTimeSlot.value]
     
-    await itemRequestingAPI.createRequest({
+    await requestStore.createRequest({
       requester: authStore.userId!,
       item: itemStore.currentItem.id,
       type: 'BORROW',
-      status: 'PENDING',
       requesterNotes: requestNotes.value.trim(),
       requestedStartTime: selectedSlot.startTime,
       requestedEndTime: selectedSlot.endTime,
     })
 
     // Show success message and navigate
-    alert('Request submitted successfully! Check "Activity" to track its status.')
+    toast.success('Request submitted successfully! Check "Activity" to track its status.')
     router.push({ name: 'Items' })
   } catch (error) {
     console.error('Failed to create request:', error)
-    alert('Failed to submit request. Please try again.')
+    toast.error('Failed to submit request. Please try again.')
   }
 }
 </script>

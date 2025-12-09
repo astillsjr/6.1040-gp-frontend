@@ -94,6 +94,16 @@ async function refreshAccessTokenIfNeeded(): Promise<string | null> {
       const { accessToken: newAccessToken } = response.data as { accessToken: string }
       localStorage.setItem('accessToken', newAccessToken)
       console.log('🔄 Access token refreshed successfully')
+      
+      // Sync token to authStore and reconnect SSE (dynamic import to avoid circular dependency)
+      try {
+        const { useAuthStore } = await import('@/stores/authStore')
+        const authStore = useAuthStore()
+        authStore.syncTokenFromStorage()
+      } catch (err) {
+        console.warn('⚠️ Could not sync token to authStore:', err)
+      }
+      
       return newAccessToken
     } catch (error) {
       console.error('Failed to refresh access token:', error)
@@ -129,6 +139,14 @@ apiClient.interceptors.request.use(
         ? `${config.baseURL}${config.url}`
         : config.url
     console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${fullUrl}`)
+    console.log(`📡 Network Request Details:`, {
+      method: config.method?.toUpperCase(),
+      url: fullUrl,
+      endpoint: config.url,
+      baseURL: config.baseURL,
+      hasAuth: !!config.headers?.Authorization,
+      timestamp: new Date().toISOString()
+    })
     return config
   },
   (error) => {
@@ -176,6 +194,16 @@ apiClient.interceptors.response.use(
           }
 
           console.log('✅ Token refreshed, retrying request')
+          
+          // Sync token to authStore and reconnect SSE (dynamic import to avoid circular dependency)
+          try {
+            const { useAuthStore } = await import('@/stores/authStore')
+            const authStore = useAuthStore()
+            authStore.syncTokenFromStorage()
+          } catch (err) {
+            console.warn('⚠️ Could not sync token to authStore:', err)
+          }
+          
           return apiClient(originalRequest)
         }
       } catch (refreshError) {
