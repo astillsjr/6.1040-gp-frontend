@@ -1095,7 +1095,7 @@ onMounted(async () => {
 })
 
 // Ensure navigation works properly
-onBeforeRouteLeave((to, from, next) => {
+onBeforeRouteLeave((_to, _from, next) => {
   // Always allow navigation - don't block it
   next()
 })

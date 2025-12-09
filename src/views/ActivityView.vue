@@ -808,10 +808,6 @@ const recentRequests = computed(() => {
   return items.sort((a, b) => b.date.getTime() - a.date.getTime())
 })
 
-const activeTransactions = computed(() => {
-  return transactionStore.transactions.filter((t) => t.status === 'IN_PROGRESS')
-})
-
 const recentTransactions = computed(() => {
   const items: ActivityItem[] = []
   

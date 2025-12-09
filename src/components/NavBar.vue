@@ -54,7 +54,6 @@
               class="relative flex items-center justify-center w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               :class="{ 'bg-primary/10 text-primary': isNotificationMenuOpen }"
               aria-label="Notifications"
-              aria-expanded="false"
               :aria-expanded="isNotificationMenuOpen"
             >
               <Bell class="w-5 h-5" />
@@ -207,7 +206,6 @@
               class="flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-accent font-medium transition-all text-sm px-4 py-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               :class="{ 'bg-primary/10 text-primary font-semibold': isUserMenuOpen }"
               aria-label="User menu"
-              aria-expanded="false"
               aria-haspopup="true"
               :aria-expanded="isUserMenuOpen"
             >
@@ -310,7 +308,6 @@
         @keydown.escape="closeMobileMenu"
         class="md:hidden p-2 rounded-lg text-foreground hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label="Toggle mobile menu"
-        aria-expanded="false"
         :aria-expanded="isMobileMenuOpen"
       >
         <svg 

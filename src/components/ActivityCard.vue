@@ -85,8 +85,10 @@ import { useItemListingStore } from '@/stores/itemListingStore'
 
 interface ActivityItem {
   id: string
+  type: 'incoming-request' | 'outgoing-request' | 'transaction' | 'listing'
   title: string
   subtitle: string
+  status: string
   statusBadge: { text: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
   timeInfo?: string
   notes?: string
